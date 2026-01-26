@@ -1,10 +1,6 @@
 name: Build Flutter iOS
 
-# on: workflow_dispatch
-on:
-  push
-
-
+on: workflow_dispatch
 
 jobs:
   build-ios:
@@ -25,7 +21,7 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2'
-          bundler-cache: 
+          bundler-cache: true
       
       ###########################
       #      Setup Java         #
