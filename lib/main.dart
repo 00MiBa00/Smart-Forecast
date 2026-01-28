@@ -21,7 +21,7 @@ void main() async {
   if (kDebugMode) {
     print('add af2 $isFirstStart $isOrganic');
   }
-  //if (isFirstStart) SdkInitializer.initAppsFlyer();
+  if (isFirstStart) SdkInitializer.initAppsFlyer();
 
   runApp(
     const App(),
