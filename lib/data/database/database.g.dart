@@ -149,6 +149,19 @@ class $DocumentsTable extends Documents
     requiredDuringInsert: false,
     defaultValue: const Constant(1.0),
   );
+  static const VerificationMeta _isDemoMeta = const VerificationMeta('isDemo');
+  @override
+  late final GeneratedColumn<bool> isDemo = GeneratedColumn<bool>(
+    'is_demo',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_demo" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -164,6 +177,7 @@ class $DocumentsTable extends Documents
     cardsCount,
     language,
     codeFontScale,
+    isDemo,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -271,6 +285,12 @@ class $DocumentsTable extends Documents
         ),
       );
     }
+    if (data.containsKey('is_demo')) {
+      context.handle(
+        _isDemoMeta,
+        isDemo.isAcceptableOrUnknown(data['is_demo']!, _isDemoMeta),
+      );
+    }
     return context;
   }
 
@@ -334,6 +354,10 @@ class $DocumentsTable extends Documents
         DriftSqlType.double,
         data['${effectivePrefix}code_font_scale'],
       )!,
+      isDemo: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_demo'],
+      )!,
     );
   }
 
@@ -360,6 +384,7 @@ class Document extends DataClass implements Insertable<Document> {
   final int cardsCount;
   final String? language;
   final double codeFontScale;
+  final bool isDemo;
   const Document({
     required this.id,
     required this.title,
@@ -374,6 +399,7 @@ class Document extends DataClass implements Insertable<Document> {
     required this.cardsCount,
     this.language,
     required this.codeFontScale,
+    required this.isDemo,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -401,6 +427,7 @@ class Document extends DataClass implements Insertable<Document> {
       map['language'] = Variable<String>(language);
     }
     map['code_font_scale'] = Variable<double>(codeFontScale);
+    map['is_demo'] = Variable<bool>(isDemo);
     return map;
   }
 
@@ -427,6 +454,7 @@ class Document extends DataClass implements Insertable<Document> {
           ? const Value.absent()
           : Value(language),
       codeFontScale: Value(codeFontScale),
+      isDemo: Value(isDemo),
     );
   }
 
@@ -451,6 +479,7 @@ class Document extends DataClass implements Insertable<Document> {
       cardsCount: serializer.fromJson<int>(json['cardsCount']),
       language: serializer.fromJson<String?>(json['language']),
       codeFontScale: serializer.fromJson<double>(json['codeFontScale']),
+      isDemo: serializer.fromJson<bool>(json['isDemo']),
     );
   }
   @override
@@ -472,6 +501,7 @@ class Document extends DataClass implements Insertable<Document> {
       'cardsCount': serializer.toJson<int>(cardsCount),
       'language': serializer.toJson<String?>(language),
       'codeFontScale': serializer.toJson<double>(codeFontScale),
+      'isDemo': serializer.toJson<bool>(isDemo),
     };
   }
 
@@ -489,6 +519,7 @@ class Document extends DataClass implements Insertable<Document> {
     int? cardsCount,
     Value<String?> language = const Value.absent(),
     double? codeFontScale,
+    bool? isDemo,
   }) => Document(
     id: id ?? this.id,
     title: title ?? this.title,
@@ -503,6 +534,7 @@ class Document extends DataClass implements Insertable<Document> {
     cardsCount: cardsCount ?? this.cardsCount,
     language: language.present ? language.value : this.language,
     codeFontScale: codeFontScale ?? this.codeFontScale,
+    isDemo: isDemo ?? this.isDemo,
   );
   Document copyWithCompanion(DocumentsCompanion data) {
     return Document(
@@ -535,6 +567,7 @@ class Document extends DataClass implements Insertable<Document> {
       codeFontScale: data.codeFontScale.present
           ? data.codeFontScale.value
           : this.codeFontScale,
+      isDemo: data.isDemo.present ? data.isDemo.value : this.isDemo,
     );
   }
 
@@ -553,7 +586,8 @@ class Document extends DataClass implements Insertable<Document> {
           ..write('sectionsCount: $sectionsCount, ')
           ..write('cardsCount: $cardsCount, ')
           ..write('language: $language, ')
-          ..write('codeFontScale: $codeFontScale')
+          ..write('codeFontScale: $codeFontScale, ')
+          ..write('isDemo: $isDemo')
           ..write(')'))
         .toString();
   }
@@ -573,6 +607,7 @@ class Document extends DataClass implements Insertable<Document> {
     cardsCount,
     language,
     codeFontScale,
+    isDemo,
   );
   @override
   bool operator ==(Object other) =>
@@ -590,7 +625,8 @@ class Document extends DataClass implements Insertable<Document> {
           other.sectionsCount == this.sectionsCount &&
           other.cardsCount == this.cardsCount &&
           other.language == this.language &&
-          other.codeFontScale == this.codeFontScale);
+          other.codeFontScale == this.codeFontScale &&
+          other.isDemo == this.isDemo);
 }
 
 class DocumentsCompanion extends UpdateCompanion<Document> {
@@ -607,6 +643,7 @@ class DocumentsCompanion extends UpdateCompanion<Document> {
   final Value<int> cardsCount;
   final Value<String?> language;
   final Value<double> codeFontScale;
+  final Value<bool> isDemo;
   final Value<int> rowid;
   const DocumentsCompanion({
     this.id = const Value.absent(),
@@ -622,6 +659,7 @@ class DocumentsCompanion extends UpdateCompanion<Document> {
     this.cardsCount = const Value.absent(),
     this.language = const Value.absent(),
     this.codeFontScale = const Value.absent(),
+    this.isDemo = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   DocumentsCompanion.insert({
@@ -638,6 +676,7 @@ class DocumentsCompanion extends UpdateCompanion<Document> {
     this.cardsCount = const Value.absent(),
     this.language = const Value.absent(),
     this.codeFontScale = const Value.absent(),
+    this.isDemo = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        title = Value(title),
@@ -659,6 +698,7 @@ class DocumentsCompanion extends UpdateCompanion<Document> {
     Expression<int>? cardsCount,
     Expression<String>? language,
     Expression<double>? codeFontScale,
+    Expression<bool>? isDemo,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -675,6 +715,7 @@ class DocumentsCompanion extends UpdateCompanion<Document> {
       if (cardsCount != null) 'cards_count': cardsCount,
       if (language != null) 'language': language,
       if (codeFontScale != null) 'code_font_scale': codeFontScale,
+      if (isDemo != null) 'is_demo': isDemo,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -693,6 +734,7 @@ class DocumentsCompanion extends UpdateCompanion<Document> {
     Value<int>? cardsCount,
     Value<String?>? language,
     Value<double>? codeFontScale,
+    Value<bool>? isDemo,
     Value<int>? rowid,
   }) {
     return DocumentsCompanion(
@@ -709,6 +751,7 @@ class DocumentsCompanion extends UpdateCompanion<Document> {
       cardsCount: cardsCount ?? this.cardsCount,
       language: language ?? this.language,
       codeFontScale: codeFontScale ?? this.codeFontScale,
+      isDemo: isDemo ?? this.isDemo,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -757,6 +800,9 @@ class DocumentsCompanion extends UpdateCompanion<Document> {
     if (codeFontScale.present) {
       map['code_font_scale'] = Variable<double>(codeFontScale.value);
     }
+    if (isDemo.present) {
+      map['is_demo'] = Variable<bool>(isDemo.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -779,6 +825,7 @@ class DocumentsCompanion extends UpdateCompanion<Document> {
           ..write('cardsCount: $cardsCount, ')
           ..write('language: $language, ')
           ..write('codeFontScale: $codeFontScale, ')
+          ..write('isDemo: $isDemo, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3288,6 +3335,7 @@ typedef $$DocumentsTableCreateCompanionBuilder =
       Value<int> cardsCount,
       Value<String?> language,
       Value<double> codeFontScale,
+      Value<bool> isDemo,
       Value<int> rowid,
     });
 typedef $$DocumentsTableUpdateCompanionBuilder =
@@ -3305,6 +3353,7 @@ typedef $$DocumentsTableUpdateCompanionBuilder =
       Value<int> cardsCount,
       Value<String?> language,
       Value<double> codeFontScale,
+      Value<bool> isDemo,
       Value<int> rowid,
     });
 
@@ -3423,6 +3472,11 @@ class $$DocumentsTableFilterComposer
 
   ColumnFilters<double> get codeFontScale => $composableBuilder(
     column: $table.codeFontScale,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDemo => $composableBuilder(
+    column: $table.isDemo,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3550,6 +3604,11 @@ class $$DocumentsTableOrderingComposer
     column: $table.codeFontScale,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isDemo => $composableBuilder(
+    column: $table.isDemo,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$DocumentsTableAnnotationComposer
@@ -3615,6 +3674,9 @@ class $$DocumentsTableAnnotationComposer
     column: $table.codeFontScale,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get isDemo =>
+      $composableBuilder(column: $table.isDemo, builder: (column) => column);
 
   Expression<T> sectionsRefs<T extends Object>(
     Expression<T> Function($$SectionsTableAnnotationComposer a) f,
@@ -3708,6 +3770,7 @@ class $$DocumentsTableTableManager
                 Value<int> cardsCount = const Value.absent(),
                 Value<String?> language = const Value.absent(),
                 Value<double> codeFontScale = const Value.absent(),
+                Value<bool> isDemo = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DocumentsCompanion(
                 id: id,
@@ -3723,6 +3786,7 @@ class $$DocumentsTableTableManager
                 cardsCount: cardsCount,
                 language: language,
                 codeFontScale: codeFontScale,
+                isDemo: isDemo,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3740,6 +3804,7 @@ class $$DocumentsTableTableManager
                 Value<int> cardsCount = const Value.absent(),
                 Value<String?> language = const Value.absent(),
                 Value<double> codeFontScale = const Value.absent(),
+                Value<bool> isDemo = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DocumentsCompanion.insert(
                 id: id,
@@ -3755,6 +3820,7 @@ class $$DocumentsTableTableManager
                 cardsCount: cardsCount,
                 language: language,
                 codeFontScale: codeFontScale,
+                isDemo: isDemo,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

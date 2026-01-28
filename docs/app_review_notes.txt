@@ -1,0 +1,95 @@
+# App Review Notes for Apple App Store Connect
+
+## Guideline 4.2 Fix - Demo Content Available
+
+This app is fully functional on first launch with NO login required and includes built-in demo content to demonstrate all features immediately.
+
+---
+
+## Testing Instructions for App Reviewers
+
+### Step 1: View Demo Content (Library Tab)
+1. Open the app - you'll see a brief onboarding (can be skipped)
+2. You'll land on the **Library** tab
+3. Tap **"Try Demo Document"** button
+4. The app opens a demo PDF about spaced repetition learning
+
+**What you'll see:**
+- A complete document with 3 sections
+- 20 flashcards already created
+- All content works offline (no network required)
+
+---
+
+### Step 2: Experience Review Session (Review Tab)
+1. Tap the **Review** tab (checkmark icon at bottom)
+2. You'll see **12 cards due today**
+3. Tap **"Start Review"** button
+4. Study flashcards:
+   - Tap to reveal answer
+   - Rate difficulty: Again / Hard / Good / Easy
+   - Complete a few cards (or all 12)
+5. Review summary shows your session stats
+
+**What you'll see:**
+- Active spaced repetition algorithm
+- Multiple card types (Q&A, Cloze deletion, True/False)
+- Statistics and progress tracking
+
+---
+
+### Step 3: Browse Cards (Create Tab)
+1. Tap the **Create** tab (+ icon at bottom)
+2. View all 20 demo flashcards
+3. Tap any card to see details
+4. Use filters to browse by document or status
+
+**What you'll see:**
+- All cards linked to source content
+- Cards organized by section
+- Full CRUD functionality available
+
+---
+
+### Optional: Import Your Own PDF
+1. Return to **Library** tab
+2. Tap **"Import PDF"** button (secondary button)
+3. Select any PDF from Files
+4. Document is imported and ready to use
+5. Open document → create sections → generate cards
+
+---
+
+## Key Features Demonstrated
+
+✅ **No Login Required** - App is fully functional immediately
+✅ **Offline First** - All demo content works without internet
+✅ **Complete User Flow** - Import → Read → Create → Review
+✅ **Spaced Repetition** - Intelligent review scheduling
+✅ **Multiple Card Types** - Q&A, Cloze, True/False
+✅ **Source Linking** - Cards link back to document locations
+
+---
+
+## Technical Notes
+
+- **Demo Data:** Seeded into local SQLite database on first "Try Demo" tap
+- **Storage:** All data stored locally (no cloud sync required)
+- **PDF Rendering:** Uses native rendering, supports text selection
+- **SRS Algorithm:** Standard SuperMemo 2 algorithm implementation
+
+---
+
+## App Purpose
+
+RecallDoc helps students, professionals, and lifelong learners apply spaced repetition to their reading materials. Import documents, create sections, generate flashcards, and review with an optimized schedule for long-term retention.
+
+---
+
+## Support Contact
+
+For any questions during review:
+- Email: [Your support email]
+- Response time: Within 24 hours
+
+Thank you for reviewing RecallDoc!

@@ -5,6 +5,7 @@ import '../features/library/screens/library_home_screen.dart';
 import '../features/review/screens/review_dashboard_screen.dart';
 import '../features/create/screens/create_home_screen.dart';
 import '../features/settings/screens/settings_screen.dart';
+import '../shared/widgets/onboarding_screen.dart';
 
 class DocTrainerApp extends StatefulWidget {
   const DocTrainerApp({super.key});
@@ -16,11 +17,21 @@ class DocTrainerApp extends StatefulWidget {
 class _DocTrainerAppState extends State<DocTrainerApp> {
   static const String _themeKey = 'theme_brightness';
   Brightness _brightness = Brightness.dark;
+  bool _showOnboarding = true;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadTheme();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    await _loadTheme();
+    await _checkOnboarding();
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   Future<void> _loadTheme() async {
@@ -28,6 +39,13 @@ class _DocTrainerAppState extends State<DocTrainerApp> {
     final isDark = prefs.getBool(_themeKey) ?? true;
     setState(() {
       _brightness = isDark ? Brightness.dark : Brightness.light;
+    });
+  }
+
+  Future<void> _checkOnboarding() async {
+    final shouldShow = await OnboardingHelper.shouldShowOnboarding();
+    setState(() {
+      _showOnboarding = shouldShow;
     });
   }
 
@@ -40,8 +58,27 @@ class _DocTrainerAppState extends State<DocTrainerApp> {
     });
   }
 
+  void _completeOnboarding() {
+    setState(() {
+      _showOnboarding = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return CupertinoApp(
+        home: Container(
+          color: _brightness == Brightness.dark 
+              ? AppTheme.backgroundColor 
+              : CupertinoColors.systemGroupedBackground,
+          child: const Center(
+            child: CupertinoActivityIndicator(),
+          ),
+        ),
+      );
+    }
+
     return CupertinoApp(
       key: ValueKey(_brightness),
       title: 'DocTrainer',
@@ -62,10 +99,14 @@ class _DocTrainerAppState extends State<DocTrainerApp> {
           textStyle: AppTheme.body,
         ),
       ),
-      home: MainTabScreen(
-        onThemeToggle: toggleTheme,
-        brightness: _brightness,
-      ),
+      home: _showOnboarding
+          ? OnboardingScreen(
+              onComplete: _completeOnboarding,
+            )
+          : MainTabScreen(
+              onThemeToggle: toggleTheme,
+              brightness: _brightness,
+            ),
     );
   }
 }

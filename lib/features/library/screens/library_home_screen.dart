@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../data/database/database.dart';
 import '../../../data/models/document_type.dart';
 import '../../../data/repositories/document_repository.dart';
+import '../../../core/services/demo_seeder.dart';
 import '../../reader/screens/reader_screen.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:uuid/uuid.dart';
@@ -159,29 +160,69 @@ class _LibraryHomeScreenState extends State<LibraryHomeScreen> {
 
         if (documents.isEmpty) {
           return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  CupertinoIcons.book,
-                  size: 64,
-                  color: AppTheme.tertiaryText,
-                ),
-                const SizedBox(height: AppTheme.spacing16),
-                Text(
-                  'No documents yet',
-                  style: AppTheme.subheadline.copyWith(
-                    color: AppTheme.secondaryText,
-                  ),
-                ),
-                const SizedBox(height: AppTheme.spacing8),
-                Text(
-                  'Tap + to import your first document',
-                  style: AppTheme.callout.copyWith(
+            child: Padding(
+              padding: const EdgeInsets.all(AppTheme.spacing32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    CupertinoIcons.book,
+                    size: 64,
                     color: AppTheme.tertiaryText,
                   ),
-                ),
-              ],
+                  const SizedBox(height: AppTheme.spacing16),
+                  Text(
+                    'No documents yet',
+                    style: AppTheme.title2.copyWith(
+                      color: AppTheme.secondaryText,
+                    ),
+                  ),
+                  const SizedBox(height: AppTheme.spacing8),
+                  Text(
+                    'Get started by trying the demo or importing your own PDF',
+                    style: AppTheme.body.copyWith(
+                      color: AppTheme.tertiaryText,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppTheme.spacing32),
+                  // Primary CTA: Try Demo
+                  SizedBox(
+                    width: double.infinity,
+                    child: CupertinoButton(
+                      color: AppTheme.accentBlue,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                      onPressed: _tryDemo,
+                      child: const Text(
+                        'Try Demo Document',
+                        style: TextStyle(
+                          color: CupertinoColors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppTheme.spacing12),
+                  // Secondary CTA: Import PDF
+                  SizedBox(
+                    width: double.infinity,
+                    child: CupertinoButton(
+                      color: AppTheme.secondarySurface,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                      onPressed: _importPDF,
+                      child: Text(
+                        'Import PDF',
+                        style: TextStyle(
+                          color: CupertinoTheme.of(context).brightness == Brightness.dark 
+                              ? AppTheme.primaryText 
+                              : CupertinoColors.black,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         }
@@ -431,6 +472,69 @@ class _LibraryHomeScreenState extends State<LibraryHomeScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _tryDemo() async {
+    try {
+      // Show loading
+      if (!mounted) return;
+      
+      showCupertinoDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CupertinoActivityIndicator(radius: 20),
+        ),
+      );
+
+      // Create/get demo
+      final demoSeeder = DemoSeeder(AppDatabase());
+      await demoSeeder.ensureDemoExists();
+      final doc = await demoSeeder.getDemoDocument();
+
+      if (!mounted) return;
+      
+      // Close loading
+      Navigator.of(context).pop();
+
+      // Open demo document
+      if (doc != null) {
+        await _documentRepository.updateLastOpened(doc.id);
+        
+        if (!mounted) return;
+        
+        Navigator.of(context).push(
+          CupertinoPageRoute(
+            builder: (context) => ReaderScreen(
+              documentId: doc.id,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      
+      // Close loading if showing
+      Navigator.of(context).popUntil((route) => route.isFirst);
+
+      
+      // Close loading if showing
+      Navigator.of(context).popUntil((route) => route.isFirst);
+
+      showCupertinoDialog(
+        context: context,
+        builder: (context) => CupertinoAlertDialog(
+          title: const Text('Error'),
+          content: Text('Failed to load demo: ${e.toString()}'),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   void _showSortOptions() {

@@ -8,6 +8,7 @@ import '../../../data/repositories/section_repository.dart';
 import '../../../data/repositories/card_repository.dart';
 import '../../../data/repositories/document_repository.dart';
 import '../../../core/services/card_generation_service.dart';
+import '../../../core/services/demo_seeder.dart';
 import 'generated_cards_review_screen.dart';
 
 class CreateHomeScreen extends StatefulWidget {
@@ -198,13 +199,81 @@ class _CreateHomeScreenState extends State<CreateHomeScreen> {
         }
 
         if (cards.isEmpty) {
+          // Different empty states based on filters
+          if (_searchQuery.isNotEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppTheme.spacing32),
+                child: Text(
+                  'No cards found for "$_searchQuery"',
+                  style: AppTheme.subheadline,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
+          }
+          
+          // No cards at all - show strong CTAs
           return Center(
-            child: Text(
-              _searchQuery.isNotEmpty 
-                  ? 'No cards found for "${_searchQuery}"'
-                  : 'No cards yet',
-              style: AppTheme.subheadline,
-              textAlign: TextAlign.center,
+            child: Padding(
+              padding: const EdgeInsets.all(AppTheme.spacing32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    CupertinoIcons.square_stack_3d_up,
+                    size: 64,
+                    color: AppTheme.tertiaryText,
+                  ),
+                  const SizedBox(height: AppTheme.spacing16),
+                  const Text(
+                    'No cards yet',
+                    style: AppTheme.title2,
+                  ),
+                  const SizedBox(height: AppTheme.spacing8),
+                  Text(
+                    'Create flashcards from your reading to start learning',
+                    style: AppTheme.body.copyWith(
+                      color: AppTheme.secondaryText,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppTheme.spacing24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: CupertinoButton(
+                      color: AppTheme.accentBlue,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                      onPressed: _tryDemo,
+                      child: const Text(
+                        'Try Demo',
+                        style: TextStyle(
+                          color: CupertinoColors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppTheme.spacing12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: CupertinoButton(
+                      color: AppTheme.secondarySurface,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                      onPressed: _showCreateCardDialog,
+                      child: Text(
+                        'Create Card',
+                        style: TextStyle(
+                          color: CupertinoTheme.of(context).brightness == Brightness.dark
+                              ? AppTheme.primaryText
+                              : CupertinoColors.black,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         }
@@ -329,7 +398,7 @@ class _CreateHomeScreenState extends State<CreateHomeScreen> {
           return Center(
             child: Text(
               _searchQuery.isNotEmpty 
-                  ? 'No sections found for "${_searchQuery}"'
+                  ? 'No sections found for "$_searchQuery"'
                   : 'No sections yet',
               style: AppTheme.subheadline,
               textAlign: TextAlign.center,
@@ -647,6 +716,64 @@ class _CreateHomeScreenState extends State<CreateHomeScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _tryDemo() async {
+    try {
+      // Show loading
+      if (mounted) {
+        showCupertinoDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CupertinoActivityIndicator(radius: 20),
+          ),
+        );
+      }
+
+      // Create/get demo
+      final demoSeeder = DemoSeeder(AppDatabase());
+      await demoSeeder.ensureDemoExists();
+
+      if (mounted) {
+        // Close loading
+        Navigator.of(context).pop();
+
+        // Show success message - user can then switch to Library tab manually
+        showCupertinoDialog(
+          context: context,
+          builder: (context) => CupertinoAlertDialog(
+            title: const Text('Demo Ready'),
+            content: const Text('Demo document has been created! Switch to the Library tab to view it.'),
+            actions: [
+              CupertinoDialogAction(
+                child: const Text('OK'),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        // Close loading if showing
+        Navigator.of(context).popUntil((route) => route.isFirst);
+
+        showCupertinoDialog(
+          context: context,
+          builder: (context) => CupertinoAlertDialog(
+            title: const Text('Error'),
+            content: Text('Failed to load demo: ${e.toString()}'),
+            actions: [
+              CupertinoDialogAction(
+                child: const Text('OK'),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _showDocumentPicker() async {

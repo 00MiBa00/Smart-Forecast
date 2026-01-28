@@ -26,6 +26,7 @@ class Documents extends Table {
   IntColumn get cardsCount => integer().withDefault(const Constant(0))();
   TextColumn get language => text().nullable()();
   RealColumn get codeFontScale => real().withDefault(const Constant(1.0))();
+  BoolColumn get isDemo => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -103,7 +104,20 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (Migrator m) async {
+          await m.createAll();
+        },
+        onUpgrade: (Migrator m, int from, int to) async {
+          if (from < 2) {
+            // Add isDemo column to Documents table
+            await m.addColumn(documents, documents.isDemo);
+          }
+        },
+      );
 
   static LazyDatabase _openConnection() {
     return LazyDatabase(() async {

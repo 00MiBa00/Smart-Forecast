@@ -26,14 +26,10 @@ check-deps:
 define read_config
 $(shell grep "^$(1):" $(CONFIG_FILE) 2>/dev/null | sed 's/^$(1):[[:space:]]*//' | sed 's/^"//' | sed 's/"$$//')
 endef
-# Основная цель
-.PHONY: setup-clear
-setup-clear: check-deps setup-name setup-icon  setup-bundle-id 
-	@echo "$(GREEN)✅ Настройка проекта завершена!$(NC)"
 
 # Основная цель
-.PHONY: setup-core
-setup-core: check-deps setup-name setup-icon setup-notifications setup-bundle-id setup-podfile setup-capabilities setup-privacy setup-notifications-frameworks
+.PHONY: setup
+setup: check-deps setup-name setup-icon setup-notifications setup-bundle-id setup-podfile
 	@echo "$(GREEN)✅ Настройка проекта завершена!$(NC)"
 
 # Настройка названия приложения

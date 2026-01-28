@@ -143,6 +143,15 @@ class CardRepository {
         .get();
   }
 
+  /// Get count of all active cards
+  Future<int> getActiveCardsCount() async {
+    return await (_database.selectOnly(_database.cards)
+          ..addColumns([_database.cards.id.count()])
+          ..where(_database.cards.status.equals(CardStatus.active.index)))
+        .getSingle()
+        .then((row) => row.read(_database.cards.id.count()) ?? 0);
+  }
+
   /// Watch active cards by document ID (stream)
   Stream<List<Card>> watchActiveCardsByDocumentId(String documentId) {
     return (_database.select(_database.cards)
