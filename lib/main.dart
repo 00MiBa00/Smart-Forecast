@@ -1,6 +1,4 @@
 import 'package:app_tracking_transparency/app_tracking_transparency.dart';
-import 'package:doc_trainer/core/screens/no_internet_connection.dart';
-import 'package:doc_trainer/core/screens/push_request_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
