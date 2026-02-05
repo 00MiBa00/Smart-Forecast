@@ -130,7 +130,7 @@ jobs:
         run: |
           cd ios
           rm -rf Pods Podfile.lock
-          pod install --repo-update
+          bundle exec pod install --repo-update
       
       ###########################
       #  Sync Certificates      #
