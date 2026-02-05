@@ -2,7 +2,7 @@ name: doc_trainer
 description: "DocTrainer - Documentation Reading Trainer with spaced repetition"
 publish_to: 'none'
 
-version: 2.0+1
+version: 2.0.0+1
 
 environment:
   sdk: ">=3.10.0"
