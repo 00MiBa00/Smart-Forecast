@@ -5,7 +5,7 @@
     <key>method</key>
     <string>app-store</string>
     <key>teamID</key>
-    <string>6LBYXN6VSV</string>
+    <string>TKY7WT4Q83</string>
     <key>signingStyle</key>
     <string>manual</string>
     <key>uploadBitcode</key>
@@ -20,12 +20,12 @@
     <key>provisioningProfiles</key>
     <dict>
         <!-- Bundle ID основного приложения -->
-        <key>com.inkafredrik.gameutpdstud</key>
-        <string>RecallDoc</string>
+        <key>com.tasty-chicken.chicken-lab</key>
+        <string>Tasty chicken lab</string>
         
         <!-- Bundle ID notification extension -->
-        <key>com.inkafredrik.gameutpdstud.notifications</key>
-        <string>RecallDoc Not</string>
+        <key>com.tasty-chicken.chicken-lab.notifications</key>
+        <string>Tasty chicken lab Not</string>
     </dict>
 </dict>
 </plist>

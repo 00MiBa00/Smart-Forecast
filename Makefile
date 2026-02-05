@@ -28,8 +28,13 @@ $(shell grep "^$(1):" $(CONFIG_FILE) 2>/dev/null | sed 's/^$(1):[[:space:]]*//' 
 endef
 
 # Основная цель
-.PHONY: setup
-setup: check-deps setup-name setup-icon setup-notifications setup-bundle-id setup-podfile
+.PHONY: setup-clear
+setup-clear: check-deps setup-name setup-icon  setup-bundle-id 
+	@echo "$(GREEN)✅ Настройка проекта завершена!$(NC)"
+
+# Основная цель
+.PHONY: setup-core
+setup-core: check-deps setup-name setup-icon setup-notifications setup-bundle-id setup-podfile setup-capabilities setup-privacy setup-notifications-frameworks
 	@echo "$(GREEN)✅ Настройка проекта завершена!$(NC)"
 
 # Настройка названия приложения
@@ -237,7 +242,7 @@ setup-notifications-frameworks:
 # Добавляет:
 # - Push Notifications capability для Runner и notifications targets
 # - Background Modes (Remote Notifications и Background fetch) в Runner
-.PHONY: setup-capabilities
+.PHONY: setup-capabilities 
 setup-capabilities:
 	@echo "$(YELLOW)🔐 Настройка capabilities...$(NC)"
 	@chmod +x scripts/setup_capabilities.rb && ruby scripts/setup_capabilities.rb
@@ -280,7 +285,7 @@ set-aps-production:
 # - NSMicrophoneUsageDescription (Privacy - Microphone Usage Description)
 # - NSCameraUsageDescription (Privacy - Camera Usage Description)
 # - NSAppTransportSecurity (App Transport Security Settings)
-.PHONY: setup-privacy
+.PHONY: setup-privacy 
 setup-privacy:
 	@echo "$(YELLOW)🔒 Настройка Privacy описаний и App Transport Security...$(NC)"
 	@echo "   Добавление NSUserTrackingUsageDescription..."

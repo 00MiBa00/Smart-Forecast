@@ -2,22 +2,22 @@
 # Измените значения ниже перед запуском make setup
 
 # Название приложения (отображается на экране устройства)
-app_name: "RecallDoc"
+app_name: "Tasty chicken lab"
 
 # Bundle ID приложения (уникальный идентификатор в App Store)
 # Формат: com.company.appname
-bundle_id: "com.inkafredrik.gameutpdstud"
+bundle_id: "com.tasty-chicken.chicken-lab"
 
 # Путь к иконке приложения (1024x1024 PNG файл)
 # Можно использовать абсолютный или относительный путь
-icon_path: "assets/Images/Icon.png"
+icon_path: "assets/images/Icon.png"
 
 # Team ID для подписи (опционально)
 # Можно найти в Apple Developer Portal
-team_id: "6LBYXN6VSV"
+team_id: ""
 
 # Версия приложения
-app_version: "2.0"
+app_version: "1.0.0"
 
 # Номер сборки
 build_number: "1"

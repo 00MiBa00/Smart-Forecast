@@ -34,7 +34,7 @@ class UrlLauncherService {
         mode: LaunchMode.externalApplication,
       );
     } catch (e) {
-      // Error ignored
+      // Ошибка открытия настроек
     }
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -507,7 +508,12 @@ class SdkInitializer {
   }
 
   static bool isIOSSimulator() {
-    return false;
+    if (!Platform.isIOS) return false;
+
+    // Проверяем переменные окружения симулятора
+    return Platform.environment.containsKey('SIMULATOR_DEVICE_NAME') ||
+        Platform.environment.containsKey('SIMULATOR_HOST_HOME') ||
+        Platform.environment.containsKey('SIMULATOR_UDID');
   }
 
   static Future<void> pushRequest(BuildContext context) async {
@@ -519,6 +525,7 @@ class SdkInitializer {
 
     setValue("pushRequestData", pushRequestData?.toJson());
     _convrtsion = SdkInitializer.getValue('conversionData');
+    // _convrtsion is always Map<String, dynamic> from getValue
     if (kDebugMode) {
       print("makeConversion 2");
     }

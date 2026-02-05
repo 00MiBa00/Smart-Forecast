@@ -1,412 +1,268 @@
-import '../../data/database/database.dart';
-import '../../data/models/card_type.dart';
-import '../../data/models/card_status.dart';
 import 'package:uuid/uuid.dart';
-import 'package:drift/drift.dart' as drift;
+import '../../data/models/card_type.dart';
+import '../../data/models/anchor.dart';
 
-/// Represents a generated card before it's persisted to the database
+/// Represents a card generated from document text
 class GeneratedCard {
   final String id;
   final String documentId;
-  final String sectionId;
+  final String? sectionId;
   final CardType type;
   final String front;
   final String back;
-  final List<String> tags;
-  final CardStatus status;
-  final String sourceSnippet;
-  final String sourceAnchor;
+  final String? sourceSnippet;
+  final Anchor? sourceAnchor;
 
   GeneratedCard({
     required this.id,
     required this.documentId,
-    required this.sectionId,
+    this.sectionId,
     required this.type,
     required this.front,
     required this.back,
-    this.tags = const [],
-    this.status = CardStatus.draft,
-    required this.sourceSnippet,
-    required this.sourceAnchor,
+    this.sourceSnippet,
+    this.sourceAnchor,
   });
 
-  /// Convert to CardsCompanion for database insertion
-  CardsCompanion toCompanion() {
-    final now = DateTime.now();
-    return CardsCompanion.insert(
-      id: id,
-      documentId: documentId,
-      sectionId: drift.Value(sectionId),
-      type: type,
-      front: front,
-      back: back,
-      tags: '[]', // JSON array
-      status: status,
-      sourceSnippet: drift.Value(sourceSnippet),
-      sourceAnchor: drift.Value(sourceAnchor),
-      createdAt: now,
-      updatedAt: now,
+  GeneratedCard copyWith({
+    String? id,
+    String? documentId,
+    String? sectionId,
+    CardType? type,
+    String? front,
+    String? back,
+    String? sourceSnippet,
+    Anchor? sourceAnchor,
+  }) {
+    return GeneratedCard(
+      id: id ?? this.id,
+      documentId: documentId ?? this.documentId,
+      sectionId: sectionId ?? this.sectionId,
+      type: type ?? this.type,
+      front: front ?? this.front,
+      back: back ?? this.back,
+      sourceSnippet: sourceSnippet ?? this.sourceSnippet,
+      sourceAnchor: sourceAnchor ?? this.sourceAnchor,
     );
   }
 }
 
-/// Service for generating cards from section text using predefined templates
+/// Service for generating flashcards from document sections
 class CardGenerationService {
   final _uuid = const Uuid();
 
-  /// Generate cards from a section
-  /// Returns 3-7 draft cards based on content analysis
+  /// Generates flashcards from a document section
+  /// 
+  /// Uses pattern matching and heuristics to identify potential Q&A pairs
+  /// from the extracted text.
   List<GeneratedCard> generateCardsFromSection({
     required String documentId,
     required String sectionId,
     required String sectionTitle,
     required String extractedText,
-    required String anchorStart,
+    required Anchor anchorStart,
   }) {
-    final trimmedText = extractedText.trim();
-
-    // Validate minimum content length
-    if (trimmedText.length < 20) {
-      return [];
-    }
-
     final cards = <GeneratedCard>[];
-    final sourceSnippet = _truncate(trimmedText, 500);
-
-    // Preprocess text
-    final sentences = _splitIntoSentences(trimmedText);
-    final lines = trimmedText.split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
-    final bulletPoints = _extractBulletPoints(lines);
-
-    // Apply templates in priority order
     
-    // 1. Definition Card (highest priority)
-    final definitionCard = _generateDefinitionCard(
+    // Clean up the text
+    final text = extractedText.trim();
+    if (text.isEmpty) {
+      return cards;
+    }
+
+    // Try different generation strategies
+    cards.addAll(_generateFromDefinitions(
       documentId: documentId,
       sectionId: sectionId,
       sectionTitle: sectionTitle,
-      sentences: sentences,
-      sourceSnippet: sourceSnippet,
-      sourceAnchor: anchorStart,
-    );
-    if (definitionCard != null) cards.add(definitionCard);
+      text: text,
+      anchorStart: anchorStart,
+    ));
 
-    // 2. Use Case Card
-    final useCaseCard = _generateUseCaseCard(
+    cards.addAll(_generateFromKeyPoints(
       documentId: documentId,
       sectionId: sectionId,
       sectionTitle: sectionTitle,
-      sentences: sentences,
-      sourceSnippet: sourceSnippet,
-      sourceAnchor: anchorStart,
-    );
-    if (useCaseCard != null) cards.add(useCaseCard);
+      text: text,
+      anchorStart: anchorStart,
+    ));
 
-    // 3. List Card (if bullet points exist)
-    if (bulletPoints.isNotEmpty) {
-      final listCard = _generateListCard(
-        documentId: documentId,
-        sectionId: sectionId,
-        sectionTitle: sectionTitle,
-        bulletPoints: bulletPoints,
-        sourceSnippet: sourceSnippet,
-        sourceAnchor: anchorStart,
-      );
-      if (listCard != null) cards.add(listCard);
-    }
-
-    // 4. Cloze Cards (up to 2)
-    final clozeCards = _generateClozeCards(
+    cards.addAll(_generateFromQuestions(
       documentId: documentId,
       sectionId: sectionId,
-      sentences: sentences,
-      sourceSnippet: sourceSnippet,
-      sourceAnchor: anchorStart,
-      maxCards: 2,
-    );
-    cards.addAll(clozeCards);
+      sectionTitle: sectionTitle,
+      text: text,
+      anchorStart: anchorStart,
+    ));
 
-    // 5. True/False Cards (fill up to 7 total)
-    final trueFalseCards = _generateTrueFalseCards(
-      documentId: documentId,
-      sectionId: sectionId,
-      sentences: sentences,
-      sourceSnippet: sourceSnippet,
-      sourceAnchor: anchorStart,
-      maxCards: 7 - cards.length,
-    );
-    cards.addAll(trueFalseCards);
-
-    // Ensure minimum 3 cards, maximum 7 cards
-    if (cards.length < 3) {
-      // Generate more True/False cards to reach minimum
-      final additionalTF = _generateTrueFalseCards(
-        documentId: documentId,
-        sectionId: sectionId,
-        sentences: sentences,
-        sourceSnippet: sourceSnippet,
-        sourceAnchor: anchorStart,
-        maxCards: 3 - cards.length,
-      );
-      cards.addAll(additionalTF);
-    }
-
-    return cards.take(7).toList();
+    return cards;
   }
 
-  /// Generate a definition card (QA type)
-  GeneratedCard? _generateDefinitionCard({
+  /// Generates cards from definition-like patterns
+  /// Pattern: "X is Y" or "X: Y"
+  List<GeneratedCard> _generateFromDefinitions({
     required String documentId,
     required String sectionId,
     required String sectionTitle,
-    required List<String> sentences,
-    required String sourceSnippet,
-    required String sourceAnchor,
-  }) {
-    // Keywords that indicate a definition
-    final definitionKeywords = [
-      'is',
-      'are',
-      'means',
-      'defined as',
-      'refers to',
-      'represents',
-      'describes',
-    ];
-
-    for (final sentence in sentences) {
-      final lowerSentence = sentence.toLowerCase();
-      
-      // Check if sentence contains definition keywords
-      final hasDefinitionKeyword = definitionKeywords.any((kw) => lowerSentence.contains(kw));
-      
-      if (hasDefinitionKeyword && sentence.length > 15) {
-        // Extract the term (usually before the keyword)
-        String term = sectionTitle;
-        
-        // Try to find the term before "is" or "means"
-        for (final keyword in ['is', 'means', 'defined as']) {
-          if (lowerSentence.contains(keyword)) {
-            final parts = sentence.split(RegExp(keyword, caseSensitive: false));
-            if (parts.isNotEmpty) {
-              term = parts[0].trim();
-              // Clean up articles
-              term = term.replaceAll(RegExp(r'^(the|a|an)\s+', caseSensitive: false), '');
-              break;
-            }
-          }
-        }
-
-        return GeneratedCard(
-          id: _uuid.v4(),
-          documentId: documentId,
-          sectionId: sectionId,
-          type: CardType.qa,
-          front: 'What is $term?',
-          back: sentence,
-          sourceSnippet: sourceSnippet,
-          sourceAnchor: sourceAnchor,
-        );
-      }
-    }
-
-    return null;
-  }
-
-  /// Generate a use case card (QA type)
-  GeneratedCard? _generateUseCaseCard({
-    required String documentId,
-    required String sectionId,
-    required String sectionTitle,
-    required List<String> sentences,
-    required String sourceSnippet,
-    required String sourceAnchor,
-  }) {
-    final useCaseKeywords = [
-      'use',
-      'used when',
-      'should be used',
-      'recommended',
-      'best for',
-      'ideal for',
-      'useful when',
-    ];
-
-    for (final sentence in sentences) {
-      final lowerSentence = sentence.toLowerCase();
-      
-      if (useCaseKeywords.any((kw) => lowerSentence.contains(kw)) && sentence.length > 15) {
-        return GeneratedCard(
-          id: _uuid.v4(),
-          documentId: documentId,
-          sectionId: sectionId,
-          type: CardType.qa,
-          front: 'When should $sectionTitle be used?',
-          back: sentence,
-          sourceSnippet: sourceSnippet,
-          sourceAnchor: sourceAnchor,
-        );
-      }
-    }
-
-    return null;
-  }
-
-  /// Generate a list card (QA type)
-  GeneratedCard? _generateListCard({
-    required String documentId,
-    required String sectionId,
-    required String sectionTitle,
-    required List<String> bulletPoints,
-    required String sourceSnippet,
-    required String sourceAnchor,
-  }) {
-    if (bulletPoints.isEmpty) return null;
-
-    // Join bullet points into a numbered list
-    final back = bulletPoints
-        .asMap()
-        .entries
-        .map((e) => '${e.key + 1}. ${e.value}')
-        .join('\n');
-
-    return GeneratedCard(
-      id: _uuid.v4(),
-      documentId: documentId,
-      sectionId: sectionId,
-      type: CardType.qa,
-      front: 'List the main points about $sectionTitle',
-      back: back,
-      sourceSnippet: sourceSnippet,
-      sourceAnchor: sourceAnchor,
-    );
-  }
-
-  /// Generate cloze cards
-  List<GeneratedCard> _generateClozeCards({
-    required String documentId,
-    required String sectionId,
-    required List<String> sentences,
-    required String sourceSnippet,
-    required String sourceAnchor,
-    required int maxCards,
+    required String text,
+    required Anchor anchorStart,
   }) {
     final cards = <GeneratedCard>[];
-
+    
+    // Split into sentences
+    final sentences = text.split(RegExp(r'[.!?]\s+'));
+    
     for (final sentence in sentences) {
-      if (cards.length >= maxCards) break;
-      if (sentence.length < 20) continue;
-
-      // Extract key nouns/terms (words with capital letters or technical terms)
-      final words = sentence.split(' ');
-      String? keyTerm;
-
-      for (final word in words) {
-        // Look for capitalized words (but not first word) or longer technical terms
-        if (word.length > 5 && 
-            (word[0] == word[0].toUpperCase() && words.indexOf(word) > 0) ||
-            word.contains('_') ||
-            word.contains('-')) {
-          keyTerm = word.replaceAll(RegExp(r'[.,;:!?]$'), '');
-          break;
+      // Look for "is/are" definitions
+      final isMatch = RegExp(r'^(.+?)\s+(?:is|are)\s+(.+)$', caseSensitive: false).firstMatch(sentence.trim());
+      if (isMatch != null) {
+        final term = isMatch.group(1)?.trim();
+        final definition = isMatch.group(2)?.trim();
+        
+        if (term != null && definition != null && term.split(' ').length <= 6 && definition.split(' ').length >= 3) {
+          cards.add(GeneratedCard(
+            id: _uuid.v4(),
+            documentId: documentId,
+            sectionId: sectionId,
+            type: CardType.qa,
+            front: 'What is $term?',
+            back: definition,
+            sourceSnippet: sentence.trim(),
+            sourceAnchor: anchorStart,
+          ));
         }
       }
+      
+      // Look for colon definitions
+      final colonMatch = RegExp(r'^(.+?):\s+(.+)$').firstMatch(sentence.trim());
+      if (colonMatch != null) {
+        final term = colonMatch.group(1)?.trim();
+        final definition = colonMatch.group(2)?.trim();
+        
+        if (term != null && definition != null && term.split(' ').length <= 6 && definition.split(' ').length >= 3) {
+          cards.add(GeneratedCard(
+            id: _uuid.v4(),
+            documentId: documentId,
+            sectionId: sectionId,
+            type: CardType.qa,
+            front: 'Define: $term',
+            back: definition,
+            sourceSnippet: sentence.trim(),
+            sourceAnchor: anchorStart,
+          ));
+        }
+      }
+    }
+    
+    return cards;
+  }
 
-      // If no key term found, use a significant word (not articles, prepositions, etc.)
-      if (keyTerm == null) {
-        final stopWords = ['the', 'a', 'an', 'is', 'are', 'was', 'were', 'in', 'on', 'at', 'to', 'for'];
-        for (final word in words) {
-          if (word.length > 5 && !stopWords.contains(word.toLowerCase())) {
-            keyTerm = word.replaceAll(RegExp(r'[.,;:!?]$'), '');
-            break;
+  /// Generates cards from key points or bullet points
+  List<GeneratedCard> _generateFromKeyPoints({
+    required String documentId,
+    required String sectionId,
+    required String sectionTitle,
+    required String text,
+    required Anchor anchorStart,
+  }) {
+    final cards = <GeneratedCard>[];
+    
+    // Look for numbered or bulleted lists
+    final lines = text.split('\n');
+    final keyPoints = <String>[];
+    
+    for (final line in lines) {
+      final trimmed = line.trim();
+      // Match bullet points or numbered lists
+      if (RegExp(r'^[\-\*•]\s+|^\d+[\.\)]\s+').hasMatch(trimmed)) {
+        final point = trimmed.replaceFirst(RegExp(r'^[\-\*•]\s+|^\d+[\.\)]\s+'), '');
+        if (point.split(' ').length >= 5) {
+          keyPoints.add(point);
+        }
+      }
+    }
+    
+    // Generate cloze deletion cards for key points
+    for (final point in keyPoints) {
+      final words = point.split(' ');
+      if (words.length >= 5) {
+        // Find important words (typically nouns, longer words)
+        for (int i = 0; i < words.length; i++) {
+          final word = words[i];
+          if (word.length >= 4 && !_isCommonWord(word.toLowerCase())) {
+            final clozeText = words.asMap().entries.map((e) {
+              return e.key == i ? '[...]' : e.value;
+            }).join(' ');
+            
+            cards.add(GeneratedCard(
+              id: _uuid.v4(),
+              documentId: documentId,
+              sectionId: sectionId,
+              type: CardType.cloze,
+              front: clozeText,
+              back: word,
+              sourceSnippet: point,
+              sourceAnchor: anchorStart,
+            ));
+            break; // Only one cloze per point
           }
         }
       }
+    }
+    
+    return cards;
+  }
 
-      if (keyTerm != null && keyTerm.isNotEmpty) {
-        final front = sentence.replaceFirst(keyTerm, '{{...}}');
-        
+  /// Generates cards from questions found in text
+  List<GeneratedCard> _generateFromQuestions({
+    required String documentId,
+    required String sectionId,
+    required String sectionTitle,
+    required String text,
+    required Anchor anchorStart,
+  }) {
+    final cards = <GeneratedCard>[];
+    
+    // Split into sentences
+    final sentences = text.split(RegExp(r'[.!?]\s+'));
+    
+    for (int i = 0; i < sentences.length - 1; i++) {
+      final sentence = sentences[i].trim();
+      final nextSentence = sentences[i + 1].trim();
+      
+      // If sentence ends with '?' it's a question
+      if (sentence.endsWith('?')) {
         cards.add(GeneratedCard(
           id: _uuid.v4(),
           documentId: documentId,
           sectionId: sectionId,
-          type: CardType.cloze,
-          front: front,
-          back: keyTerm,
-          sourceSnippet: sourceSnippet,
-          sourceAnchor: sourceAnchor,
+          type: CardType.qa,
+          front: sentence,
+          back: nextSentence,
+          sourceSnippet: '$sentence $nextSentence',
+          sourceAnchor: anchorStart,
         ));
       }
     }
-
-    return cards;
-  }
-
-  /// Generate true/false cards
-  List<GeneratedCard> _generateTrueFalseCards({
-    required String documentId,
-    required String sectionId,
-    required List<String> sentences,
-    required String sourceSnippet,
-    required String sourceAnchor,
-    required int maxCards,
-  }) {
-    final cards = <GeneratedCard>[];
-
-    for (final sentence in sentences) {
-      if (cards.length >= maxCards) break;
-      if (sentence.length < 15) continue;
-
-      // Create a true/false card from factual sentences
-      cards.add(GeneratedCard(
-        id: _uuid.v4(),
-        documentId: documentId,
-        sectionId: sectionId,
-        type: CardType.trueFalse,
-        front: sentence,
-        back: 'true',
-        sourceSnippet: sourceSnippet,
-        sourceAnchor: sourceAnchor,
-      ));
-    }
-
-    return cards;
-  }
-
-  /// Split text into sentences
-  List<String> _splitIntoSentences(String text) {
-    // Simple sentence splitting (could be improved)
-    return text
-        .split(RegExp(r'[.!?]+'))
-        .map((s) => s.trim())
-        .where((s) => s.isNotEmpty && s.length > 10)
-        .toList();
-  }
-
-  /// Extract bullet points from lines
-  List<String> _extractBulletPoints(List<String> lines) {
-    final bullets = <String>[];
     
-    for (final line in lines) {
-      // Check for bullet point markers
-      if (line.startsWith('- ') || 
-          line.startsWith('* ') || 
-          line.startsWith('• ') ||
-          RegExp(r'^\d+\.\s').hasMatch(line)) {
-        // Remove bullet marker
-        final cleaned = line.replaceFirst(RegExp(r'^[-*•]\s+|\d+\.\s+'), '').trim();
-        if (cleaned.isNotEmpty) {
-          bullets.add(cleaned);
-        }
-      }
-    }
-
-    return bullets;
+    return cards;
   }
 
-  /// Truncate text to max length
-  String _truncate(String text, int maxLength) {
-    if (text.length <= maxLength) return text;
-    return '${text.substring(0, maxLength)}...';
+  /// Checks if a word is too common to be useful for cloze deletion
+  bool _isCommonWord(String word) {
+    const commonWords = {
+      'the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'i',
+      'it', 'for', 'not', 'on', 'with', 'he', 'as', 'you', 'do', 'at',
+      'this', 'but', 'his', 'by', 'from', 'they', 'we', 'say', 'her', 'she',
+      'or', 'an', 'will', 'my', 'one', 'all', 'would', 'there', 'their', 'what',
+      'so', 'up', 'out', 'if', 'about', 'who', 'get', 'which', 'go', 'me',
+      'when', 'make', 'can', 'like', 'time', 'no', 'just', 'him', 'know', 'take',
+      'into', 'year', 'your', 'good', 'some', 'could', 'them', 'see', 'other', 'than',
+      'then', 'now', 'look', 'only', 'come', 'its', 'over', 'think', 'also', 'back',
+      'after', 'use', 'two', 'how', 'our', 'work', 'first', 'well', 'way', 'even',
+      'new', 'want', 'because', 'any', 'these', 'give', 'day', 'most', 'us', 'is',
+      'was', 'are', 'been', 'has', 'had', 'were', 'said', 'did', 'having', 'may'
+    };
+    return commonWords.contains(word);
   }
 }

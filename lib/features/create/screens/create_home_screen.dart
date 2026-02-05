@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../data/database/database.dart';
 import '../../../data/models/card_type.dart';
 import '../../../data/models/card_status.dart';
+import '../../../data/models/anchor.dart';
 import '../../../data/repositories/section_repository.dart';
 import '../../../data/repositories/card_repository.dart';
 import '../../../data/repositories/document_repository.dart';
@@ -581,7 +582,7 @@ class _CreateHomeScreenState extends State<CreateHomeScreen> {
         sectionId: section.id,
         sectionTitle: section.title,
         extractedText: section.extractedText,
-        anchorStart: section.anchorStart,
+        anchorStart: Anchor.fromJsonString(section.anchorStart),
       );
 
       // Close loading overlay

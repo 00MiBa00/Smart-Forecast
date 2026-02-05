@@ -53,9 +53,7 @@ class App extends StatelessWidget {
   Widget build(BuildContext context) {
     return const CupertinoApp(
       debugShowCheckedModeBanner: false,
-      home: SplashScreen(), 
-      //home: PushRequestScreen(),
-      //home: NoInternetConnectionScreen(),
+      home: SplashScreen(),
     );
   }
 }
