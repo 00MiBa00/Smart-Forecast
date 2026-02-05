@@ -87,6 +87,13 @@ class _WebViewScreenState extends State<WebViewScreen> {
   @override
   void initState() {
     super.initState();
+    // Разрешаем все ориентации для WebView (landscape + portrait)
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
 
     // Проверяем, есть ли сохраненная ссылка в хранилище
     String? savedUrl = SdkInitializer.receivedUrl;
@@ -98,7 +105,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
       print("3 showWeb pushURL ${SdkInitializer.pushURL}");
     }
     if (kDebugMode) {
-      print("3 surlToLoad -${urlToLoad}-");
+      print("3 surlToLoad -$urlToLoad-");
     }
     controller = WebKitWebViewController(
       WebKitWebViewControllerCreationParams(
@@ -243,6 +250,16 @@ class _WebViewScreenState extends State<WebViewScreen> {
     //   (controller as WebKitWebViewController)
     //       .setAllowsBackForwardNavigationGestures(true);
     // }
+  }
+
+  @override
+  void dispose() {
+    // Возвращаем только portrait при выходе из WebView
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+    super.dispose();
   }
 
   @override

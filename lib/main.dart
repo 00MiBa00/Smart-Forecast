@@ -1,4 +1,3 @@
-import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,40 +8,71 @@ import 'package:flutter/cupertino.dart';
 import 'core/screens/splash_screen.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  initTrackingAppTransparency();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  SdkInitializer.prefs = await SharedPreferences.getInstance();
-  await SdkInitializer.loadRuntimeStorageToDevice();
-  var isFirstStart = !SdkInitializer.hasValue("isFirstStart");
-  var isOrganic = SdkInitializer.getValue("Organic");
-  if (kDebugMode) {
-    print('add af2 $isFirstStart $isOrganic');
-  }
-  if (isFirstStart) SdkInitializer.initAppsFlyer();
-
-  runApp(
-    const App(),
-  );
-}
-
-Future<void> initTrackingAppTransparency() async {
   try {
-    TrackingStatus status =
-        await AppTrackingTransparency.requestTrackingAuthorization();
     if (kDebugMode) {
-      print('App Tracking Transparency status: $status');
+      print('=== MAIN STARTED ===');
     }
-    int timeout = 0;
-    while (status == TrackingStatus.notDetermined && timeout < 10) {
-      status = await AppTrackingTransparency.requestTrackingAuthorization();
-      await Future.delayed(const Duration(milliseconds: 200));
-      timeout++;
-    }
-  } catch (e) {
+    WidgetsFlutterBinding.ensureInitialized();
     if (kDebugMode) {
-      print('Error requesting App Tracking Transparency authorization: $e');
+      print('Widgets binding initialized');
     }
+    
+    // Проверяем, не инициализирован ли уже Firebase
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      if (kDebugMode) {
+        print('Firebase initialized');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Firebase already initialized or error: $e');
+      }
+      // Firebase уже инициализирован, продолжаем
+    }
+    
+    SdkInitializer.prefs = await SharedPreferences.getInstance();
+    await SdkInitializer.loadRuntimeStorageToDevice();
+    var isFirstStart = !SdkInitializer.hasValue("isFirstStart");
+    var isOrganic = SdkInitializer.getValue("Organic");
+    if (kDebugMode) {
+      print('add af2 $isFirstStart $isOrganic');
+    }
+    if (isFirstStart) {
+      if (kDebugMode) {
+        print('Initializing AppsFlyer...');
+      }
+      SdkInitializer.initAppsFlyer();
+    }
+
+    if (kDebugMode) {
+      print('Running app...');
+    }
+    runApp(const App());
+    if (kDebugMode) {
+      print('App widget created');
+    }
+  } catch (e, stackTrace) {
+    if (kDebugMode) {
+      print('FATAL ERROR IN MAIN: $e');
+      print('Stack trace: $stackTrace');
+    }
+    // Показываем fallback экран с ошибкой
+    runApp(
+      CupertinoApp(
+        home: Container(
+          color: const Color(0xFFFF0000),
+          child: Center(
+            child: Text(
+              'Error: $e',
+              style: const TextStyle(color: CupertinoColors.white, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

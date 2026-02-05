@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/theme/app_theme.dart';
 import '../features/library/screens/library_home_screen.dart';
@@ -23,6 +24,11 @@ class _DocTrainerAppState extends State<DocTrainerApp> {
   @override
   void initState() {
     super.initState();
+    // Устанавливаем только portrait для игры
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
     _initialize();
   }
 

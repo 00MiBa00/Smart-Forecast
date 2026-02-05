@@ -1,11 +1,16 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:io';
 
 import '../app_config.dart';
 
-class NoInternetConnectionScreen extends StatelessWidget {
+class NoInternetConnectionScreen extends StatefulWidget {
   const NoInternetConnectionScreen({super.key});
+
+  @override
+  State<NoInternetConnectionScreen> createState() =>
+      _NoInternetConnectionScreenState();
 
   static Future<bool> checkInternetConnection() async {
     try {
@@ -31,6 +36,21 @@ class NoInternetConnectionScreen extends StatelessWidget {
       (route) => false,
     );
   }
+}
+
+class _NoInternetConnectionScreenState
+    extends State<NoInternetConnectionScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Разрешаем все ориентации для экрана отсутствия интернета
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,8 +64,11 @@ class NoInternetConnectionScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.wifi_off,
-                  size: 80, color: AppConfig.errorScreenIconColor),
+              Icon(
+                Icons.wifi_off,
+                size: 80,
+                color: AppConfig.errorScreenIconColor,
+              ),
               SizedBox(height: 20),
               Text(
                 'Please, check your internet connection and restart',
