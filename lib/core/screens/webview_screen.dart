@@ -93,9 +93,11 @@ class _WebViewScreenState extends State<WebViewScreen> {
     String urlToLoad = savedUrl ?? widget.initialUrl;
     if (SdkInitializer.pushURL != null) {
       urlToLoad = SdkInitializer.pushURL!;
+      // Clear pushURL after using it to prevent reuse on next WebView open
+      SdkInitializer.pushURL = null;
     }
     if (kDebugMode) {
-      print("3 showWeb pushURL ${SdkInitializer.pushURL}");
+      print("3 showWeb urlToLoad: $urlToLoad");
     }
     if (kDebugMode) {
       print("3 surlToLoad -${urlToLoad}-");

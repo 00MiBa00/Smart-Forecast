@@ -106,8 +106,10 @@ class FirebaseMessagingService {
       print(
           '2 Notification caused the app to open: ${message.data.toString()}');
     }
-    SdkInitializer.pushURL = message.data.toString();
-    // TODO: Add navigation or specific handling based on message data
+    // Extract URL from message data properly
+    if (message.data.containsKey('url')) {
+      SdkInitializer.pushURL = message.data['url'];
+    }
   }
 
   static Future<String> InitPushAndGetToken() async {

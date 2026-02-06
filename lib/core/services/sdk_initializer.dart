@@ -178,12 +178,7 @@ class SdkInitializer {
             (route) => false,
           );
         } else {
-          final initialMessage =
-              await FirebaseMessaging.instance.getInitialMessage();
-          if (initialMessage != null) {
-            _onMessageOpenedApp(initialMessage);
-          }
-          FirebaseMessaging.onMessageOpenedApp.listen(_onMessageOpenedApp);
+          // Push notification listeners are already set up in FirebaseMessagingService.init()
           showWeb(context);
         }
       } else {
@@ -192,21 +187,43 @@ class SdkInitializer {
       return;
     }
 
-    // WidgetsFlutterBinding.ensureInitialized().addPostFrameCallback((_) async {
-    //   final status =
-    //       await AppTrackingTransparency.requestTrackingAuthorization();
-    // });
-    //initAppsFlyer();
-  }
-
-  static void _onMessageOpenedApp(RemoteMessage message) {
+    // Первый запуск - ждем callback от AppsFlyer
+    // AppsFlyer уже инициализирован в main.dart с установленным callback
     if (kDebugMode) {
-      print(
-          '1 Notification caused the app to open: ${message.data.toString()}');
+      print('First start - waiting for AppsFlyer callback');
     }
-    SdkInitializer.pushURL = message.data['url'];
 
-    // TODO: Add navigation or specific handling based on message data
+    // Ждем до 10 секунд на callback от AppsFlyer
+    int attempts = 0;
+    const maxAttempts = 50; // 50 * 200ms = 10 секунд
+    while (!hasValue("isFirstStart") && attempts < maxAttempts) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      attempts++;
+
+      // Проверяем, не произошла ли навигация через callback
+      if (hasValue("isFirstStart")) {
+        if (kDebugMode) {
+          print('AppsFlyer callback received after ${attempts * 200}ms');
+        }
+        return; // Exit early, navigation already handled by callback
+      }
+    }
+
+    // Если таймаут истек и callback не пришел, считаем organic и показываем приложение
+    // Double-check to prevent race condition with callback
+    if (!hasValue("isFirstStart")) {
+      if (kDebugMode) {
+        print('AppsFlyer timeout after ${attempts * 200}ms - showing app as organic');
+      }
+      setValue("Organic", true);
+      setValue("isFirstStart", true);
+      await saveRuntimeStorageToDevice();
+      showApp(context);
+    } else {
+      if (kDebugMode) {
+        print('AppsFlyer callback completed during final check, navigation already handled');
+      }
+    }
   }
 
   static Future<String> makeConversion(
@@ -243,6 +260,14 @@ class SdkInitializer {
   }
 
   static void onEndRequest(String? url) {
+    // Guard against double execution during first start timeout period
+    if (hasValue("isFirstStart")) {
+      if (kDebugMode) {
+        print('onEndRequest skipped - already initialized');
+      }
+      return;
+    }
+    
     if (url == null || url == "") {
       if (kDebugMode) {
         print('not url');
