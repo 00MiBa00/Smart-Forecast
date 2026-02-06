@@ -39,6 +39,9 @@ class SdkInitializer {
 
   static String deep_link_sub1 = "";
   static String deep_link_value = "";
+  
+  // Flag to prevent double navigation during first start
+  static bool _navigationHandled = false;
 
   /// Сохраняет содержимое _runtimeStorage в строку JSON
   static String saveRuntimeStorage() {
@@ -143,6 +146,9 @@ class SdkInitializer {
   }
 
   static Future<void> initAll(BuildContext context) async {
+    // Reset navigation flag for fresh start
+    _navigationHandled = false;
+    
     var isNotInternet =
         await NoInternetConnectionScreen.checkInternetConnection();
 
@@ -211,10 +217,11 @@ class SdkInitializer {
 
     // Если таймаут истек и callback не пришел, считаем organic и показываем приложение
     // Double-check to prevent race condition with callback
-    if (!hasValue("isFirstStart")) {
+    if (!hasValue("isFirstStart") && !_navigationHandled) {
       if (kDebugMode) {
         print('AppsFlyer timeout after ${attempts * 200}ms - showing app as organic');
       }
+      _navigationHandled = true;
       setValue("Organic", true);
       setValue("isFirstStart", true);
       await saveRuntimeStorageToDevice();
@@ -248,27 +255,49 @@ class SdkInitializer {
       url: AppConfig.endpoint + "/config.php",
     );
 
-    // if (isLoad) {
-    //   onEndRequest(result);
-    // }
-    if (result == null) return "";
+    if (kDebugMode) {
+      print('makeConversion server response: $result');
+    }
+    
+    if (result == null) {
+      if (kDebugMode) {
+        print('makeConversion: server returned null');
+      }
+      return "";
+    }
     setValue('serverResponse', result);
 
-    if (!result.containsKey("url")) return "";
+    if (!result.containsKey("url")) {
+      if (kDebugMode) {
+        print('makeConversion: response does not contain url key');
+      }
+      return "";
+    }
 
+    if (kDebugMode) {
+      print('makeConversion: extracted URL = ${result['url']}');
+    }
     return result['url'];
   }
 
   static void onEndRequest(String? url) {
-    // Guard against double execution during first start timeout period
-    if (hasValue("isFirstStart")) {
+    if (kDebugMode) {
+      print('onEndRequest called with URL: $url');
+    }
+    
+    // Guard against double navigation during first start
+    if (_navigationHandled) {
       if (kDebugMode) {
-        print('onEndRequest skipped - already initialized');
+        print('onEndRequest skipped - navigation already handled');
       }
       return;
     }
+    _navigationHandled = true;
     
     if (url == null || url == "") {
+      if (kDebugMode) {
+        print('onEndRequest: URL is empty, showing organic app');
+      }
       if (kDebugMode) {
         print('not url');
       }
@@ -281,6 +310,10 @@ class SdkInitializer {
     }
     setValue("Organic", false);
     setValue("isFirstStart", true);
+
+    if (kDebugMode) {
+      print('onEndRequest: User is NON-ORGANIC, URL = $url');
+    }
 
     // Сохраняем полный ответ сервера
     setValue('serverResponse', url);
@@ -392,7 +425,16 @@ class SdkInitializer {
 
       //     });
       _appsflyerSdk?.onInstallConversionData((res) {
-        if (isHasConversion) return;
+        if (kDebugMode) {
+          print('=== AppsFlyer onInstallConversionData callback triggered ===');
+        }
+        
+        if (isHasConversion) {
+          if (kDebugMode) {
+            print('Callback already processed, skipping');
+          }
+          return;
+        }
         isHasConversion = true;
         _appsflyerSdk?.getAppsFlyerUID().then((value) async {
           if (value == null) return;
