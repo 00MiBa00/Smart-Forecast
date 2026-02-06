@@ -1,5 +1,6 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:convert';
 
 import 'local_notifications_service.dart';
 import 'sdk_initializer.dart';
@@ -94,9 +95,11 @@ class FirebaseMessagingService {
     }
     final notificationData = message.notification;
     if (notificationData != null) {
+      // Convert message.data to JSON string for proper parsing in tap handler
+      final payload = json.encode(message.data);
       // Display a local notification using the service
-      _localNotificationsService?.showNotification(notificationData.title,
-          notificationData.body, message.data.toString());
+      _localNotificationsService?.showNotification(
+          notificationData.title, notificationData.body, payload);
     }
   }
 
@@ -109,6 +112,18 @@ class FirebaseMessagingService {
     // Extract URL from message data properly
     if (message.data.containsKey('url')) {
       SdkInitializer.pushURL = message.data['url'];
+      if (kDebugMode) {
+        print('Push URL set to: ${SdkInitializer.pushURL}');
+      }
+      
+      // Trigger navigation to WebView if context is available
+      if (SdkInitializer.hasContext()) {
+        SdkInitializer.handlePushNavigation(SdkInitializer.getContext()!);
+      } else {
+        if (kDebugMode) {
+          print('Context not available yet, navigation will happen on app resume');
+        }
+      }
     }
   }
 

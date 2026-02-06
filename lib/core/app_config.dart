@@ -13,7 +13,7 @@ class AppConfig {
   static const String endpoint = 'https://recalldoc.com'; // Для iOS'
 
   static const String logoPath = 'assets/Images/Logo.png';
-  static const String pushRequestLogoPath = 'assets/Images/Logo2.png';
+  static const String pushRequestLogoPath = 'assets/Images/Logo.png';
 
   static const String pushRequestBackgroundPath =
       'assets/Images/SplashBackground.png';

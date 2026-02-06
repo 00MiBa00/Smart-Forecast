@@ -121,6 +121,16 @@ class SdkInitializer {
     );
   }
 
+  /// Check if context is available for navigation
+  static bool hasContext() {
+    return _context != null;
+  }
+
+  /// Get current context for navigation
+  static BuildContext? getContext() {
+    return _context;
+  }
+
   static void showWeb(BuildContext context) {
     if (kDebugMode) {
       print('3 showWeb');
@@ -130,6 +140,26 @@ class SdkInitializer {
       MaterialPageRoute(builder: (context) => const WebViewScreen()),
       (route) => false,
     );
+  }
+
+  /// Handle push notification tap - navigate to WebView with pushURL
+  static void handlePushNavigation(BuildContext context) {
+    if (kDebugMode) {
+      print('handlePushNavigation called, pushURL: $pushURL');
+    }
+    
+    if (pushURL != null && pushURL!.isNotEmpty) {
+      // Navigate to WebView which will use pushURL
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const WebViewScreen()),
+        (route) => false,
+      );
+    } else {
+      if (kDebugMode) {
+        print('handlePushNavigation: pushURL is empty');
+      }
+    }
   }
 
   static const MethodChannel _channel =

@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'dart:convert';
+
+import 'sdk_initializer.dart';
 
 class LocalNotificationsService {
   // Private constructor for singleton pattern
@@ -62,6 +65,31 @@ class LocalNotificationsService {
       // Handle notification tap in foreground
       if (kDebugMode) {
         print('Foreground notification has been tapped: ${response.payload}');
+      }
+      
+      // Extract URL from payload and navigate
+      if (response.payload != null && response.payload!.isNotEmpty) {
+        try {
+          // Parse the payload which is now proper JSON from message.data
+          final Map<String, dynamic> data = json.decode(response.payload!);
+          final extractedUrl = data['url'];
+          
+          if (extractedUrl != null && extractedUrl.isNotEmpty) {
+            SdkInitializer.pushURL = extractedUrl;
+            if (kDebugMode) {
+              print('Extracted URL from local notification: $extractedUrl');
+            }
+            
+            // Trigger navigation if context available
+            if (SdkInitializer.hasContext()) {
+              SdkInitializer.handlePushNavigation(SdkInitializer.getContext()!);
+            }
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('Error parsing notification payload: $e');
+          }
+        }
       }
     });
 
