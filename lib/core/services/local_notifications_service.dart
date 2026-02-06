@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'sdk_initializer.dart';
 
 class LocalNotificationsService {
   // Private constructor for singleton pattern
@@ -59,9 +60,15 @@ class LocalNotificationsService {
     // Initialize plugin with settings and callback for notification taps
     await _flutterLocalNotificationsPlugin.initialize(initializationSettings,
         onDidReceiveNotificationResponse: (NotificationResponse response) {
-      // Handle notification tap in foreground
+      // Handle notification tap - payload contains the URL
+      final url = response.payload;
       if (kDebugMode) {
-        print('Foreground notification has been tapped: ${response.payload}');
+        print('Local notification tapped with URL: $url');
+      }
+      if (url != null && url.isNotEmpty) {
+        // Set pushURL and trigger navigation
+        SdkInitializer.pushURL = url;
+        SdkInitializer.handlePushNavigation();
       }
     });
 

@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'firebase_messaging_service.dart';
 import '../screens/no_internet_connection.dart';
 import 'push_request_control.dart';
 import '../screens/push_request_screen.dart';
@@ -661,8 +662,16 @@ class SdkInitializer {
 
   static Future<void> pushRequest(BuildContext context) async {
     // Firebase и Firebase Messaging уже инициализированы в main.dart
-    // Получаем существующий токен
+    
+    // Запрашиваем системное разрешение на уведомления
+    final messagingService = FirebaseMessagingService.instance();
+    await messagingService.requestPermission();
+    
+    // Получаем токен (может обновиться после получения разрешения)
     var token = await FirebaseMessaging.instance.getToken();
+    if (kDebugMode) {
+      print('Push token after permission: $token');
+    }
 
     PushRequestControl.acceptPushRequest(pushRequestData!);
 

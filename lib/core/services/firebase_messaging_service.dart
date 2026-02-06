@@ -25,11 +25,11 @@ class FirebaseMessagingService {
     // Init local notifications service
     _localNotificationsService = localNotificationsService;
 
-    // Handle FCM token
+    // Handle FCM token (get current token without requesting permission)
     var token = await _handlePushNotificationsToken();
 
-    // Request user permission for notifications
-    _requestPermission();
+    // NOTE: Permission request (_requestPermission) is NOT called here
+    // It will be called manually when user clicks "Yes" on custom push request screen
 
     // Register handler for background messages (app terminated)
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -76,7 +76,11 @@ class FirebaseMessagingService {
   }
 
   /// Requests notification permission from the user
-  Future<void> _requestPermission() async {
+  /// This should be called when user explicitly agrees to receive notifications
+  Future<void> requestPermission() async {
+    if (kDebugMode) {
+      print('Requesting notification permission from user...');
+    }
     // Request permission for alerts, badges, and sounds
     final result = await FirebaseMessaging.instance.requestPermission(
       alert: true,
@@ -86,7 +90,7 @@ class FirebaseMessagingService {
 
     // Log the user's permission decision
     if (kDebugMode) {
-      print('User granted permission: ${result.authorizationStatus}');
+      print('User permission result: ${result.authorizationStatus}');
     }
   }
 
@@ -97,11 +101,16 @@ class FirebaseMessagingService {
     }
     final notificationData = message.notification;
     if (notificationData != null) {
-      // Display a local notification using the service
+      // Extract URL from message data
+      final url = message.data['url'] ?? '';
+      if (kDebugMode) {
+        print('Extracted URL from foreground push: $url');
+      }
+      // Display a local notification with URL as payload
       _localNotificationsService?.showNotification(
         notificationData.title,
         notificationData.body,
-        message.data.toString(),
+        url, // Pass URL, not entire data.toString()
       );
     }
   }
