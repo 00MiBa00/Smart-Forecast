@@ -106,8 +106,9 @@ class FirebaseMessagingService {
   /// Handles notification taps when app is opened from the background or terminated state
   void _onMessageOpenedApp(RemoteMessage message) {
     if (kDebugMode) {
-      print(
-          '2 Notification caused the app to open: ${message.data.toString()}');
+      print('=== PUSH TAP HANDLER ===' );
+      print('Full message data: ${message.data.toString()}');
+      print('Available keys: ${message.data.keys.toList()}');
     }
     // Extract URL from message data properly
     if (message.data.containsKey('url')) {
@@ -123,6 +124,11 @@ class FirebaseMessagingService {
         if (kDebugMode) {
           print('Context not available yet, navigation will happen on app resume');
         }
+      }
+    } else {
+      if (kDebugMode) {
+        print('WARNING: URL not found in message.data!');
+        print('Message data keys: ${message.data.keys.toList()}');
       }
     }
   }
@@ -144,6 +150,15 @@ class FirebaseMessagingService {
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   if (kDebugMode) {
-    print('Background message received: ${message.data.toString()}');
+    print('Background message received (app terminated): ${message.data.toString()}');
+  }
+  
+  // Extract and save URL for when the app starts
+  if (message.data.containsKey('url')) {
+    final url = message.data['url'];
+    SdkInitializer.pushURL = url;
+    if (kDebugMode) {
+      print('Saved push URL from terminated state: $url');
+    }
   }
 }
