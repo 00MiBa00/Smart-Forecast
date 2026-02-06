@@ -2,7 +2,6 @@ import 'dart:io' show Platform;
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import '../../app/clear_app.dart';
 import '../../firebase_options.dart';
 import '../app_config.dart';
@@ -83,7 +82,7 @@ class SdkInitializer {
 
   static Future<void> loadRuntimeStorageToDevice() async {
     try {
-      var json = prefs!.getString('runtimeStorage');
+      var json = await prefs!.getString('runtimeStorage');
       loadRuntimeStorage(json!);
       if (kDebugMode) {
         print('runtimeStorage успешно загружен');
@@ -130,60 +129,8 @@ class SdkInitializer {
     );
   }
 
-  /// Handles push notification navigation when app is in background
-  static void handlePushNavigation() {
-    if (kDebugMode) {
-      print('handlePushNavigation called');
-      print('pushURL: $pushURL');
-      print('_context available: ${_context != null}');
-    }
-    
-    if (pushURL == null) {
-      if (kDebugMode) {
-        print('No pushURL to navigate to');
-      }
-      return;
-    }
-
-    if (_context != null && _context!.mounted) {
-      if (kDebugMode) {
-        print('Context available - navigating immediately to: $pushURL');
-      }
-      showWeb(_context!);
-    } else {
-      if (kDebugMode) {
-        print('Context not available yet - will retry navigation');
-      }
-      // Retry a few times if context is not ready yet
-      int attempts = 0;
-      const maxAttempts = 10;
-      Future.doWhile(() async {
-        await Future.delayed(const Duration(milliseconds: 200));
-        attempts++;
-        
-        if (_context != null && _context!.mounted) {
-          if (kDebugMode) {
-            print('Context became available after ${attempts * 200}ms - navigating');
-          }
-          showWeb(_context!);
-          return false; // Stop retrying
-        }
-        
-        if (attempts >= maxAttempts) {
-          if (kDebugMode) {
-            print('Context still not available after ${attempts * 200}ms - giving up');
-          }
-          return false; // Stop retrying
-        }
-        
-        return true; // Continue retrying
-      });
-    }
-  }
-
-  static const MethodChannel _channel = MethodChannel(
-    'com.yourapp/native_methods',
-  );
+  static const MethodChannel _channel =
+      MethodChannel('com.yourapp/native_methods');
 
   static Future<void> callSwiftMethod() async {
     try {
@@ -196,45 +143,13 @@ class SdkInitializer {
   }
 
   static Future<void> initAll(BuildContext context) async {
-    if (kDebugMode) {
-      print('=== initAll started ===');
-    }
-
-    // Request ATT permission after UI is ready
-    if (Platform.isIOS) {
-      try {
-        if (kDebugMode) {
-          print('Requesting ATT authorization...');
-        }
-        final status =
-            await AppTrackingTransparency.requestTrackingAuthorization();
-        if (kDebugMode) {
-          print('App Tracking Transparency status: $status');
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          print('Error requesting ATT: $e');
-        }
-      }
-    }
-
-    if (kDebugMode) {
-      print('Checking internet connection...');
-    }
     var isNotInternet =
         await NoInternetConnectionScreen.checkInternetConnection();
 
     // print('isNotInternet =' + isNotInternet.toString());
     if (!isNotInternet) {
-      if (kDebugMode) {
-        print('No internet - showing error screen');
-      }
       NoInternetConnectionScreen.showIfNoInternet(context);
       return;
-    }
-
-    if (kDebugMode) {
-      print('Internet OK, loading preferences...');
     }
     prefs = await SharedPreferences.getInstance();
     await loadRuntimeStorageToDevice();
@@ -247,97 +162,34 @@ class SdkInitializer {
     }
     _context = context;
 
-    // Проверяем, есть ли pushURL (пуш пришел пока приложение было в фоне)
-    if (pushURL != null) {
-      if (kDebugMode) {
-        print('pushURL detected from background: $pushURL');
-      }
-      // Навигация на WebView с pushURL
-      Future.delayed(const Duration(milliseconds: 100), () {
-        if (_context != null && _context!.mounted) {
-          showWeb(_context!);
-        }
-      });
-      return;
-    }
-
     var isFirstStart = !hasValue("isFirstStart");
-    if (kDebugMode) {
-      print('isFirstStart: $isFirstStart');
-    }
-
     if (!isFirstStart) {
       var isOrganic = getValue("Organic");
-      if (kDebugMode) {
-        print('Not first start, isOrganic: $isOrganic');
-      }
       if (!isOrganic) {
         Map<String, dynamic> conversion = getValue("conversionData");
         if (kDebugMode) {
-          print('Making conversion with data: $conversion');
+          print(conversion);
         }
         receivedUrl = await makeConversion(conversion);
         if (PushRequestControl.shouldShowPushRequest(pushRequestData!)) {
-          if (kDebugMode) {
-            print('Showing push request screen');
-          }
           Navigator.pushAndRemoveUntil(
             _context!,
             MaterialPageRoute(builder: (context) => const PushRequestScreen()),
             (route) => false,
           );
         } else {
-          if (kDebugMode) {
-            print('Showing web view');
+          final initialMessage =
+              await FirebaseMessaging.instance.getInitialMessage();
+          if (initialMessage != null) {
+            _onMessageOpenedApp(initialMessage);
           }
-          // Firebase Messaging уже инициализирован в main.dart
-          // и обработчики уже зарегистрированы
+          FirebaseMessaging.onMessageOpenedApp.listen(_onMessageOpenedApp);
           showWeb(context);
         }
       } else {
-        if (kDebugMode) {
-          print('Organic user - showing app');
-        }
         showApp(context);
       }
       return;
-    }
-
-    // Первый запуск - ждем callback от AppsFlyer
-    // AppsFlyer уже инициализирован в main.dart с установленным callback
-    if (kDebugMode) {
-      print('First start - waiting for AppsFlyer callback');
-    }
-
-    // Ждем до 5 секунд на callback от AppsFlyer (уменьшено для лучшего UX)
-    int attempts = 0;
-    const maxAttempts = 25; // 25 * 200ms = 5 секунд
-    while (!hasValue("isFirstStart") && attempts < maxAttempts) {
-      await Future.delayed(const Duration(milliseconds: 200));
-      attempts++;
-
-      // Проверяем, не произошла ли навигация через callback
-      if (hasValue("isFirstStart")) {
-        if (kDebugMode) {
-          print('AppsFlyer callback received after ${attempts * 200}ms');
-        }
-        return;
-      }
-    }
-
-    // Если таймаут истек и callback не пришел, считаем organic и показываем приложение
-    if (!hasValue("isFirstStart")) {
-      if (kDebugMode) {
-        print(
-          'AppsFlyer timeout after ${attempts * 200}ms - showing app as organic',
-        );
-      }
-      setValue("Organic", true);
-      setValue("isFirstStart", true);
-      await saveRuntimeStorageToDevice();
-      if (mounted(context)) {
-        showApp(context);
-      }
     }
 
     // WidgetsFlutterBinding.ensureInitialized().addPostFrameCallback((_) async {
@@ -347,8 +199,14 @@ class SdkInitializer {
     //initAppsFlyer();
   }
 
-  static bool mounted(BuildContext context) {
-    return context.mounted;
+  static void _onMessageOpenedApp(RemoteMessage message) {
+    if (kDebugMode) {
+      print(
+          '1 Notification caused the app to open: ${message.data.toString()}');
+    }
+    SdkInitializer.pushURL = message.data['url'];
+
+    // TODO: Add navigation or specific handling based on message data
   }
 
   static Future<String> makeConversion(
@@ -357,7 +215,7 @@ class SdkInitializer {
     bool isLoad = true,
   }) async {
     conversionMap.addEntries([
-      MapEntry("store_id", "id${AppConfig.appsFlyerAppId}"),
+      MapEntry("store_id", "id" + AppConfig.appsFlyerAppId),
       MapEntry("bundle_id", AppConfig.bundleId),
       MapEntry("locale", AppConfig.locale),
       MapEntry("os", AppConfig.os),
@@ -370,7 +228,7 @@ class SdkInitializer {
     //print(conversionMap);
     var result = await sendPostRequest(
       body: conversionMap,
-      url: "${AppConfig.endpoint}/config.php",
+      url: AppConfig.endpoint + "/config.php",
     );
 
     // if (isLoad) {
@@ -439,8 +297,7 @@ class SdkInitializer {
       afDevKey: AppConfig.appsFlyerDevKey,
       appId: AppConfig.appsFlyerAppId,
       showDebug: true,
-      timeToWaitForATTUserAuthorization:
-          5, // Уменьшено с 15 до 5 секунд для лучшего UX
+      timeToWaitForATTUserAuthorization: 15,
       manualStart: true,
     );
     _appsflyerSdk = AppsflyerSdk(options);
@@ -470,8 +327,7 @@ class SdkInitializer {
           _convrtsion.addAll(map);
           if (kDebugMode) {
             print(
-              'deep_link_value=$deep_link_value deep_link_sub1=$deep_link_sub1|',
-            );
+                'deep_link_value=$deep_link_value deep_link_sub1=$deep_link_sub1|');
           }
           break;
         case Status.NOT_FOUND:
@@ -497,97 +353,96 @@ class SdkInitializer {
 
     _appsflyerSdk
         ?.initSdk(
-          registerConversionDataCallback: true,
-          registerOnAppOpenAttributionCallback: true,
-          registerOnDeepLinkingCallback: true,
-        )
+      registerConversionDataCallback: true,
+      registerOnAppOpenAttributionCallback: true,
+      registerOnDeepLinkingCallback: true,
+    )
         .then((value) {
+      if (kDebugMode) {
+        print('_appsflyerSdk initSdk');
+      }
+
+      // _appsflyerSdk!
+      //     .onDeepLinking((DeepLinkResult dl) => (DeepLinkResult dl) {
+
+      //     });
+      _appsflyerSdk?.onInstallConversionData((res) {
+        if (isHasConversion) return;
+        isHasConversion = true;
+        _appsflyerSdk?.getAppsFlyerUID().then((value) async {
+          if (value == null) return;
+          Map<String, dynamic> conversionMap = res["payload"];
+
           if (kDebugMode) {
-            print('_appsflyerSdk initSdk');
+            print("start load conversion 1");
+          }
+          if (kDebugMode) {
+            print("af_sub2: ${conversionMap['af_sub1']}");
           }
 
-          // _appsflyerSdk!
-          //     .onDeepLinking((DeepLinkResult dl) => (DeepLinkResult dl) {
+          if (kDebugMode) {
+            print(_convrtsion);
+          }
+          if (kDebugMode) {
+            print("start load conversion 2");
+          }
 
-          //     });
-          _appsflyerSdk?.onInstallConversionData((res) {
-            if (isHasConversion) return;
-            isHasConversion = true;
-            _appsflyerSdk?.getAppsFlyerUID().then((value) async {
-              if (value == null) return;
-              Map<String, dynamic> conversionMap = res["payload"];
+          if (kDebugMode) {
+            print(conversionMap);
+          }
 
-              if (kDebugMode) {
-                print("start load conversion 1");
-              }
-              if (kDebugMode) {
-                print("af_sub2: ${conversionMap['af_sub1']}");
-              }
+          if (kDebugMode) {
+            print("start load conversion 3");
+          }
 
-              if (kDebugMode) {
-                print(_convrtsion);
-              }
-              if (kDebugMode) {
-                print("start load conversion 2");
-              }
+          for (var entry in conversionMap.entries) {
+            //if (_convrtsion.containsKey(entry.key)) continue;
+            if (entry.value != '') {
+              _convrtsion[entry.key] = entry.value;
 
-              if (kDebugMode) {
-                print(conversionMap);
-              }
-
-              if (kDebugMode) {
-                print("start load conversion 3");
-              }
-
-              for (var entry in conversionMap.entries) {
-                //if (_convrtsion.containsKey(entry.key)) continue;
-                if (entry.value != '') {
-                  _convrtsion[entry.key] = entry.value;
-
-                  if (kDebugMode) {
-                    print(
-                      '|${entry.key} - ${entry.value} |${_convrtsion[entry.key]}',
-                    );
-                  }
-                }
-              }
-
-              // _convrtsion.addAll(conversionMap);
-              // _convrtsion
-              //     .addEntries(conversionMap as Iterable<MapEntry<String, dynamic>>);
-              _convrtsion.addEntries([MapEntry("af_id", value)]);
-
-              setValue('conversionData', _convrtsion);
-              var url = await makeConversion(_convrtsion);
-              if (kDebugMode) {
-                print("url -$url");
-              }
-              onEndRequest(url);
-            });
-
-            // if (res is Map<dynamic, dynamic>) {
-            //    Map<String, dynamic>? conversionMap =(res as Map<dynamic, dynamic>)["asd"];
-            // }
-          });
-          // Starting the SDK with optional success and error callbacks
-          _appsflyerSdk?.startSDK(
-            onSuccess: () {
-              if (kDebugMode) {
-                print("AppsFlyer SDK initialized successfully.");
-              }
-            },
-            onError: (int errorCode, String errorMessage) {
-              if (kDebugMode) {
-                print("${options.afDevKey} ${options.appId}");
-              }
               if (kDebugMode) {
                 print(
-                  "Error initializing AppsFlyer SDK: Code $errorCode - $errorMessage",
-                );
+                    '|${entry.key} - ${entry.value} |${_convrtsion[entry.key]}');
               }
-            },
-          );
+            }
+          }
+
+          // _convrtsion.addAll(conversionMap);
+          // _convrtsion
+          //     .addEntries(conversionMap as Iterable<MapEntry<String, dynamic>>);
+          _convrtsion.addEntries([MapEntry("af_id", value)]);
+
+          setValue('conversionData', _convrtsion);
+          var url = await makeConversion(_convrtsion);
+          if (kDebugMode) {
+            print("url -" + url);
+          }
+          onEndRequest(url);
         });
+
+        // if (res is Map<dynamic, dynamic>) {
+        //    Map<String, dynamic>? conversionMap =(res as Map<dynamic, dynamic>)["asd"];
+        // }
+      });
+      // Starting the SDK with optional success and error callbacks
+      _appsflyerSdk?.startSDK(
+        onSuccess: () {
+          if (kDebugMode) {
+            print("AppsFlyer SDK initialized successfully.");
+          }
+        },
+        onError: (int errorCode, String errorMessage) {
+          if (kDebugMode) {
+            print(options.afDevKey + " " + options.appId);
+          }
+          if (kDebugMode) {
+            print(
+              "Error initializing AppsFlyer SDK: Code $errorCode - $errorMessage",
+            );
+          }
+        },
+      );
+    });
     // Initialization of the AppsFlyer SDK
 
     // Starting the SDK with optional success and error callbacks
@@ -661,29 +516,20 @@ class SdkInitializer {
   }
 
   static Future<void> pushRequest(BuildContext context) async {
-    // Firebase и Firebase Messaging уже инициализированы в main.dart
-    
-    // Запрашиваем системное разрешение на уведомления
-    final messagingService = FirebaseMessagingService.instance();
-    await messagingService.requestPermission();
-    
-    // Получаем токен (может обновиться после получения разрешения)
-    var token = await FirebaseMessaging.instance.getToken();
-    if (kDebugMode) {
-      print('Push token after permission: $token');
-    }
+    // Firebase уже инициализирован в main.dart
+
+    var token = await FirebaseMessagingService.InitPushAndGetToken();
 
     PushRequestControl.acceptPushRequest(pushRequestData!);
 
     setValue("pushRequestData", pushRequestData?.toJson());
     _convrtsion = SdkInitializer.getValue('conversionData');
-    // _convrtsion is always Map<String, dynamic> from getValue
     if (kDebugMode) {
       print("makeConversion 2");
     }
     var url = await SdkInitializer.secondMakeConversion(
       _convrtsion,
-      apnsToken: token ?? '',
+      apnsToken: token,
       isLoad: false,
     );
     setValue(url, "receivedUrl");
@@ -710,12 +556,12 @@ class SdkInitializer {
     }
 
     if (kDebugMode) {
-      print("with token $conversionMap");
+      print("with token " + conversionMap.toString());
     }
     setValue("", conversionMap);
     var result = await sendPostRequest(
       body: conversionMap,
-      url: "${AppConfig.endpoint}/config.php",
+      url: AppConfig.endpoint + "/config.php",
     );
 
     // if (isLoad) {
@@ -735,11 +581,11 @@ class SdkInitializer {
 
 Map<String, dynamic> parseJsonFromString(String jsonString) {
   if (kDebugMode) {
-    print("1 $jsonString");
+    print("1 " + jsonString);
   }
   String cleanedString = jsonString.trim();
   if (kDebugMode) {
-    print("2 $cleanedString");
+    print("2 " + cleanedString);
   }
   // Парсим JSON строку в Map
   Map<String, dynamic> jsonMap = jsonDecode(cleanedString);

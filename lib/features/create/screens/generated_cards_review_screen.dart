@@ -83,7 +83,7 @@ class _GeneratedCardsReviewScreenState extends State<GeneratedCardsReviewScreen>
             tags: '[]',
             status: status,
             sourceSnippet: drift.Value(card.sourceSnippet),
-            sourceAnchor: drift.Value(card.sourceAnchor?.toJsonString()),
+            sourceAnchor: drift.Value(card.sourceAnchor),
             createdAt: now,
             updatedAt: now,
           ),

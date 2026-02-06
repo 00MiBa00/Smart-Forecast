@@ -19,17 +19,16 @@ class FirebaseMessagingService {
   LocalNotificationsService? _localNotificationsService;
 
   /// Initialize Firebase Messaging and sets up all message listeners
-  Future<String> init({
-    required LocalNotificationsService localNotificationsService,
-  }) async {
+  Future<String> init(
+      {required LocalNotificationsService localNotificationsService}) async {
     // Init local notifications service
     _localNotificationsService = localNotificationsService;
 
-    // Handle FCM token (get current token without requesting permission)
+    // Handle FCM token
     var token = await _handlePushNotificationsToken();
 
-    // NOTE: Permission request (_requestPermission) is NOT called here
-    // It will be called manually when user clicks "Yes" on custom push request screen
+    // Request user permission for notifications
+    _requestPermission();
 
     // Register handler for background messages (app terminated)
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -57,30 +56,24 @@ class FirebaseMessagingService {
     }
 
     // Listen for token refresh events
-    FirebaseMessaging.instance.onTokenRefresh
-        .listen((fcmToken) {
-          if (kDebugMode) {
-            print('FCM token refreshed: $fcmToken');
-          }
-          // TODO: optionally send token to your server for targeting this device
-        })
-        .onError((error) {
-          // Handle errors during token refresh
+    FirebaseMessaging.instance.onTokenRefresh.listen((fcmToken) {
+      if (kDebugMode) {
+        print('FCM token refreshed: $fcmToken');
+      }
+      // TODO: optionally send token to your server for targeting this device
+    }).onError((error) {
+      // Handle errors during token refresh
 
-          if (kDebugMode) {
-            print('Error refreshing FCM token: $error');
-          }
-        });
+      if (kDebugMode) {
+        print('Error refreshing FCM token: $error');
+      }
+    });
 
     return token!;
   }
 
   /// Requests notification permission from the user
-  /// This should be called when user explicitly agrees to receive notifications
-  Future<void> requestPermission() async {
-    if (kDebugMode) {
-      print('Requesting notification permission from user...');
-    }
+  Future<void> _requestPermission() async {
     // Request permission for alerts, badges, and sounds
     final result = await FirebaseMessaging.instance.requestPermission(
       alert: true,
@@ -90,7 +83,7 @@ class FirebaseMessagingService {
 
     // Log the user's permission decision
     if (kDebugMode) {
-      print('User permission result: ${result.authorizationStatus}');
+      print('User granted permission: ${result.authorizationStatus}');
     }
   }
 
@@ -101,17 +94,9 @@ class FirebaseMessagingService {
     }
     final notificationData = message.notification;
     if (notificationData != null) {
-      // Extract URL from message data
-      final url = message.data['url'] ?? '';
-      if (kDebugMode) {
-        print('Extracted URL from foreground push: $url');
-      }
-      // Display a local notification with URL as payload
-      _localNotificationsService?.showNotification(
-        notificationData.title,
-        notificationData.body,
-        url, // Pass URL, not entire data.toString()
-      );
+      // Display a local notification using the service
+      _localNotificationsService?.showNotification(notificationData.title,
+          notificationData.body, message.data.toString());
     }
   }
 
@@ -119,29 +104,10 @@ class FirebaseMessagingService {
   void _onMessageOpenedApp(RemoteMessage message) {
     if (kDebugMode) {
       print(
-        '=== Notification tapped (app in background) ===',
-      );
-      print('Message data: ${message.data.toString()}');
+          '2 Notification caused the app to open: ${message.data.toString()}');
     }
-    final url = message.data['url'];
-    if (url != null && url.isNotEmpty) {
-      SdkInitializer.pushURL = url;
-      if (kDebugMode) {
-        print('Push URL set to: $url');
-      }
-      // Trigger navigation if context is available
-      // For background state, need to wait a bit for app to come to foreground
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (kDebugMode) {
-          print('Attempting navigation with pushURL: $url');
-        }
-        SdkInitializer.handlePushNavigation();
-      });
-    } else {
-      if (kDebugMode) {
-        print('WARNING: No URL found in push notification data');
-      }
-    }
+    SdkInitializer.pushURL = message.data.toString();
+    // TODO: Add navigation or specific handling based on message data
   }
 
   static Future<String> InitPushAndGetToken() async {
@@ -150,8 +116,7 @@ class FirebaseMessagingService {
 
     final firebaseMessagingService = FirebaseMessagingService.instance();
     var token = await firebaseMessagingService.init(
-      localNotificationsService: localNotificationsService,
-    );
+        localNotificationsService: localNotificationsService);
 
     return token;
   }

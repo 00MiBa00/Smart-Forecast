@@ -5,26 +5,27 @@ import 'package:flutter/cupertino.dart';
 class AppConfig {
 //========================= App Serrings =========================//
 
-  static const String appsFlyerDevKey = 'LnLHZmbXUWdhzX6XwVsRhM';
-  static const String appsFlyerAppId = '6758293770'; // Для iOS'
-  static const String bundleId = 'com.inkafredrik.gameutpdstud'; // Для iOS'
+  static const String appsFlyerDevKey = 'ZxzZYPbN93maktCtrRZtw8';
+  static const String appsFlyerAppId = '6755145892'; // Для iOS'
+  static const String bundleId = 'com.cash-nemotion.nemotion-cash'; // Для iOS'
   static const String locale = 'en'; // Для iOS'
   static const String os = 'iOS'; // Для iOS'
-  static const String endpoint = 'https://recalldoc.com'; // Для iOS'
+  static const String endpoint = 'https://cashnemotion.com'; // Для iOS'
 
-  static const String logoPath = 'assets/Images/Logo.png';
-  static const String pushRequestLogoPath = 'assets/Images/Logo.png';
+  static const String logoPath = 'assets/images/Logo.png';
+  static const String pushRequestLogoPath = 'assets/images/Logo2.png';
 
   static const String pushRequestBackgroundPath =
-      'assets/Images/SplashBackground.png';
+      'assets/images/SplashBackground.png';
   static const String splashBackgroundPath =
-      'assets/Images/SplashBackground.png';
+      'assets/images/SplashBackground.png';
   static const String errorBackgroundPath =
-      'assets/Images/SplashBackground.png';
+      'assets/images/SplashBackground.png';
+
 //========================= UI Settings =========================//
 
   //========================= Splash Screen ====================//
-  static const Decoration splashDecoration = BoxDecoration(
+  static const Decoration splashDecoration = const BoxDecoration(
     //закоментировать если не нужен градиент
     gradient: LinearGradient(
       begin: Alignment.topCenter,
@@ -47,7 +48,7 @@ class AppConfig {
 
   //========================= Push Request Screen ====================//
 
-  static const Decoration pushRequestDecoration = BoxDecoration(
+  static const Decoration pushRequestDecoration = const BoxDecoration(
     //закоментировать если не нужен градиент
     gradient: LinearGradient(
       begin: Alignment.topCenter,
@@ -82,7 +83,7 @@ class AppConfig {
   static const Color skipTextColor = Color(0x7DF9F9F9);
 
   //========================= Error Screen ====================//
-  static const Decoration errorScreenDecoration = BoxDecoration(
+  static const Decoration errorScreenDecoration = const BoxDecoration(
     //закоментировать если не нужен градиент
     gradient: LinearGradient(
       begin: Alignment.topCenter,

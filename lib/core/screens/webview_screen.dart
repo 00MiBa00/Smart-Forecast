@@ -87,36 +87,18 @@ class _WebViewScreenState extends State<WebViewScreen> {
   @override
   void initState() {
     super.initState();
-    // Разрешаем все ориентации для WebView (landscape + portrait)
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
 
-    // Приоритет выбора URL:
-    // 1. pushURL (из пуш-уведомления) - наивысший приоритет
-    // 2. receivedUrl (от сервера)
-    // 3. initialUrl (дефолтный URL)
-    String urlToLoad;
+    // Проверяем, есть ли сохраненная ссылка в хранилище
+    String? savedUrl = SdkInitializer.receivedUrl;
+    String urlToLoad = savedUrl ?? widget.initialUrl;
     if (SdkInitializer.pushURL != null) {
       urlToLoad = SdkInitializer.pushURL!;
-      if (kDebugMode) {
-        print("WebView loading URL from PUSH: $urlToLoad");
-      }
-      // Очищаем pushURL после использования, чтобы не переиспользовать
-      SdkInitializer.pushURL = null;
-    } else if (SdkInitializer.receivedUrl != null && SdkInitializer.receivedUrl!.isNotEmpty) {
-      urlToLoad = SdkInitializer.receivedUrl!;
-      if (kDebugMode) {
-        print("WebView loading URL from SERVER: $urlToLoad");
-      }
-    } else {
-      urlToLoad = widget.initialUrl;
-      if (kDebugMode) {
-        print("WebView loading INITIAL URL: $urlToLoad");
-      }
+    }
+    if (kDebugMode) {
+      print("3 showWeb pushURL ${SdkInitializer.pushURL}");
+    }
+    if (kDebugMode) {
+      print("3 surlToLoad -${urlToLoad}-");
     }
     controller = WebKitWebViewController(
       WebKitWebViewControllerCreationParams(
@@ -261,16 +243,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
     //   (controller as WebKitWebViewController)
     //       .setAllowsBackForwardNavigationGestures(true);
     // }
-  }
-
-  @override
-  void dispose() {
-    // Возвращаем только portrait при выходе из WebView
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-    super.dispose();
   }
 
   @override

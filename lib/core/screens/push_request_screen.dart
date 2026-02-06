@@ -5,7 +5,7 @@ import '../services/sdk_initializer.dart';
 import 'webview_screen.dart';
 
 class PushRequestScreen extends StatefulWidget {
-  const PushRequestScreen({super.key});
+  const PushRequestScreen({Key? key}) : super(key: key);
 
   @override
   State<PushRequestScreen> createState() => _PushRequestScreenState();
@@ -54,7 +54,7 @@ class _PushRequestScreenState extends State<PushRequestScreen> {
                 Expanded(
                   flex: isLandscape ? 2 : 4,
                   child: Center(
-                    child: SizedBox(
+                    child: Container(
                       width: isLandscape ? 200 : 250,
                       height: isLandscape ? 160 : 250,
                       child: const Image(
@@ -119,7 +119,7 @@ class _PushRequestScreenState extends State<PushRequestScreen> {
                         ),
 
                         // Кнопки
-                        SizedBox(
+                        Container(
                           width: double.infinity,
                           height: isLandscape ? 40 : 50,
                           //S  margin: const EdgeInsets.only(bottom: 15),
@@ -145,7 +145,7 @@ class _PushRequestScreenState extends State<PushRequestScreen> {
                             ),
                           ),
                         ),
-                        SizedBox(
+                        Container(
                           width: double.infinity,
                           height: isLandscape ? 40 : 50,
                           child: ElevatedButton(
