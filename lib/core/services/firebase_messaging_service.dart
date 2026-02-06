@@ -113,8 +113,15 @@ class FirebaseMessagingService {
         '2 Notification caused the app to open: ${message.data.toString()}',
       );
     }
-    SdkInitializer.pushURL = message.data['url'];
-    // TODO: Add navigation or specific handling based on message data
+    final url = message.data['url'];
+    if (url != null && url.isNotEmpty) {
+      SdkInitializer.pushURL = url;
+      if (kDebugMode) {
+        print('Push URL set to: $url');
+      }
+      // Trigger navigation if context is available
+      SdkInitializer.handlePushNavigation();
+    }
   }
 
   static Future<String> InitPushAndGetToken() async {

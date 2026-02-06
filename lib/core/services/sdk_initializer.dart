@@ -131,6 +131,23 @@ class SdkInitializer {
     );
   }
 
+  /// Handles push notification navigation when app is in background
+  static void handlePushNavigation() {
+    if (pushURL != null && _context != null) {
+      if (kDebugMode) {
+        print(
+          'handlePushNavigation: Navigating to WebView with pushURL: $pushURL',
+        );
+      }
+      // Use a delayed call to ensure the context is fully ready
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (_context != null && _context!.mounted) {
+          showWeb(_context!);
+        }
+      });
+    }
+  }
+
   static const MethodChannel _channel = MethodChannel(
     'com.yourapp/native_methods',
   );
@@ -196,6 +213,20 @@ class SdkInitializer {
       //print("new PushRequestData");
     }
     _context = context;
+
+    // Проверяем, есть ли pushURL (пуш пришел пока приложение было в фоне)
+    if (pushURL != null) {
+      if (kDebugMode) {
+        print('pushURL detected from background: $pushURL');
+      }
+      // Навигация на WebView с pushURL
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (_context != null && _context!.mounted) {
+          showWeb(_context!);
+        }
+      });
+      return;
+    }
 
     var isFirstStart = !hasValue("isFirstStart");
     if (kDebugMode) {
