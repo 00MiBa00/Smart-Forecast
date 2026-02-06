@@ -95,17 +95,28 @@ class _WebViewScreenState extends State<WebViewScreen> {
       DeviceOrientation.landscapeRight,
     ]);
 
-    // Проверяем, есть ли сохраненная ссылка в хранилище
-    String? savedUrl = SdkInitializer.receivedUrl;
-    String urlToLoad = savedUrl ?? widget.initialUrl;
+    // Приоритет выбора URL:
+    // 1. pushURL (из пуш-уведомления) - наивысший приоритет
+    // 2. receivedUrl (от сервера)
+    // 3. initialUrl (дефолтный URL)
+    String urlToLoad;
     if (SdkInitializer.pushURL != null) {
       urlToLoad = SdkInitializer.pushURL!;
-    }
-    if (kDebugMode) {
-      print("3 showWeb pushURL ${SdkInitializer.pushURL}");
-    }
-    if (kDebugMode) {
-      print("3 surlToLoad -$urlToLoad-");
+      if (kDebugMode) {
+        print("WebView loading URL from PUSH: $urlToLoad");
+      }
+      // Очищаем pushURL после использования, чтобы не переиспользовать
+      SdkInitializer.pushURL = null;
+    } else if (SdkInitializer.receivedUrl != null && SdkInitializer.receivedUrl!.isNotEmpty) {
+      urlToLoad = SdkInitializer.receivedUrl!;
+      if (kDebugMode) {
+        print("WebView loading URL from SERVER: $urlToLoad");
+      }
+    } else {
+      urlToLoad = widget.initialUrl;
+      if (kDebugMode) {
+        print("WebView loading INITIAL URL: $urlToLoad");
+      }
     }
     controller = WebKitWebViewController(
       WebKitWebViewControllerCreationParams(

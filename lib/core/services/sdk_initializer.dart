@@ -10,11 +10,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'firebase_messaging_service.dart';
 import '../screens/no_internet_connection.dart';
 import 'push_request_control.dart';
 import '../screens/push_request_screen.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../screens/webview_screen.dart';
@@ -133,17 +131,51 @@ class SdkInitializer {
 
   /// Handles push notification navigation when app is in background
   static void handlePushNavigation() {
-    if (pushURL != null && _context != null) {
+    if (kDebugMode) {
+      print('handlePushNavigation called');
+      print('pushURL: $pushURL');
+      print('_context available: ${_context != null}');
+    }
+    
+    if (pushURL == null) {
       if (kDebugMode) {
-        print(
-          'handlePushNavigation: Navigating to WebView with pushURL: $pushURL',
-        );
+        print('No pushURL to navigate to');
       }
-      // Use a delayed call to ensure the context is fully ready
-      Future.delayed(const Duration(milliseconds: 100), () {
+      return;
+    }
+
+    if (_context != null && _context!.mounted) {
+      if (kDebugMode) {
+        print('Context available - navigating immediately to: $pushURL');
+      }
+      showWeb(_context!);
+    } else {
+      if (kDebugMode) {
+        print('Context not available yet - will retry navigation');
+      }
+      // Retry a few times if context is not ready yet
+      int attempts = 0;
+      const maxAttempts = 10;
+      Future.doWhile(() async {
+        await Future.delayed(const Duration(milliseconds: 200));
+        attempts++;
+        
         if (_context != null && _context!.mounted) {
+          if (kDebugMode) {
+            print('Context became available after ${attempts * 200}ms - navigating');
+          }
           showWeb(_context!);
+          return false; // Stop retrying
         }
+        
+        if (attempts >= maxAttempts) {
+          if (kDebugMode) {
+            print('Context still not available after ${attempts * 200}ms - giving up');
+          }
+          return false; // Stop retrying
+        }
+        
+        return true; // Continue retrying
       });
     }
   }
@@ -257,12 +289,8 @@ class SdkInitializer {
           if (kDebugMode) {
             print('Showing web view');
           }
-          final initialMessage = await FirebaseMessaging.instance
-              .getInitialMessage();
-          if (initialMessage != null) {
-            _onMessageOpenedApp(initialMessage);
-          }
-          FirebaseMessaging.onMessageOpenedApp.listen(_onMessageOpenedApp);
+          // Firebase Messaging уже инициализирован в main.dart
+          // и обработчики уже зарегистрированы
           showWeb(context);
         }
       } else {
@@ -320,17 +348,6 @@ class SdkInitializer {
 
   static bool mounted(BuildContext context) {
     return context.mounted;
-  }
-
-  static void _onMessageOpenedApp(RemoteMessage message) {
-    if (kDebugMode) {
-      print(
-        '1 Notification caused the app to open: ${message.data.toString()}',
-      );
-    }
-    SdkInitializer.pushURL = message.data['url'];
-
-    // TODO: Add navigation or specific handling based on message data
   }
 
   static Future<String> makeConversion(
@@ -643,9 +660,9 @@ class SdkInitializer {
   }
 
   static Future<void> pushRequest(BuildContext context) async {
-    // Firebase already initialized in main.dart, no need to initialize again
-
-    var token = await FirebaseMessagingService.InitPushAndGetToken();
+    // Firebase и Firebase Messaging уже инициализированы в main.dart
+    // Получаем существующий токен
+    var token = await FirebaseMessaging.instance.getToken();
 
     PushRequestControl.acceptPushRequest(pushRequestData!);
 
@@ -657,7 +674,7 @@ class SdkInitializer {
     }
     var url = await SdkInitializer.secondMakeConversion(
       _convrtsion,
-      apnsToken: token,
+      apnsToken: token ?? '',
       isLoad: false,
     );
     setValue(url, "receivedUrl");

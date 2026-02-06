@@ -24,7 +24,7 @@ class AppConfig {
 //========================= UI Settings =========================//
 
   //========================= Splash Screen ====================//
-  static const Decoration splashDecoration = const BoxDecoration(
+  static const Decoration splashDecoration = BoxDecoration(
     //закоментировать если не нужен градиент
     gradient: LinearGradient(
       begin: Alignment.topCenter,
@@ -47,7 +47,7 @@ class AppConfig {
 
   //========================= Push Request Screen ====================//
 
-  static const Decoration pushRequestDecoration = const BoxDecoration(
+  static const Decoration pushRequestDecoration = BoxDecoration(
     //закоментировать если не нужен градиент
     gradient: LinearGradient(
       begin: Alignment.topCenter,
@@ -82,7 +82,7 @@ class AppConfig {
   static const Color skipTextColor = Color(0x7DF9F9F9);
 
   //========================= Error Screen ====================//
-  static const Decoration errorScreenDecoration = const BoxDecoration(
+  static const Decoration errorScreenDecoration = BoxDecoration(
     //закоментировать если не нужен градиент
     gradient: LinearGradient(
       begin: Alignment.topCenter,

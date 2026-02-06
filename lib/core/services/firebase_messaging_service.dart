@@ -110,8 +110,9 @@ class FirebaseMessagingService {
   void _onMessageOpenedApp(RemoteMessage message) {
     if (kDebugMode) {
       print(
-        '2 Notification caused the app to open: ${message.data.toString()}',
+        '=== Notification tapped (app in background) ===',
       );
+      print('Message data: ${message.data.toString()}');
     }
     final url = message.data['url'];
     if (url != null && url.isNotEmpty) {
@@ -120,7 +121,17 @@ class FirebaseMessagingService {
         print('Push URL set to: $url');
       }
       // Trigger navigation if context is available
-      SdkInitializer.handlePushNavigation();
+      // For background state, need to wait a bit for app to come to foreground
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (kDebugMode) {
+          print('Attempting navigation with pushURL: $url');
+        }
+        SdkInitializer.handlePushNavigation();
+      });
+    } else {
+      if (kDebugMode) {
+        print('WARNING: No URL found in push notification data');
+      }
     }
   }
 

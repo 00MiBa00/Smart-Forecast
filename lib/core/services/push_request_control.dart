@@ -7,8 +7,7 @@ class PushRequestData {
 
   void Print() {
     if (kDebugMode) {
-      print(' pushNotificationAccepted=${pushNotificationAccepted} \n' +
-          'pushDeclinedAt=${pushDeclinedAt}');
+      print(' pushNotificationAccepted=$pushNotificationAccepted \n' 'pushDeclinedAt=$pushDeclinedAt');
     }
   }
 
@@ -87,8 +86,7 @@ class PushRequestControl {
     data.pushDeclinedAt = "";
     if (isDebug) {
       print('pushNotificationAccepted \n'
-              'pushNotificationAccepted=${data.pushNotificationAccepted} \n' +
-          'pushDeclinedAt=${data.pushDeclinedAt}');
+              'pushNotificationAccepted=${data.pushNotificationAccepted} \n' 'pushDeclinedAt=${data.pushDeclinedAt}');
     }
   }
 
@@ -98,8 +96,7 @@ class PushRequestControl {
     data.pushNotificationAccepted = false;
     data.pushDeclinedAt = date.toIso8601String();
     if (isDebug) {
-      print('pushNotificationDecline \n' +
-          'date=$date \n' +
+      print('pushNotificationDecline \n' 'date=$date \n' +
           'pushNotificationAccepted=${data.pushNotificationAccepted} \n' +
           'pushDeclinedAt=${data.pushDeclinedAt}\n');
     }

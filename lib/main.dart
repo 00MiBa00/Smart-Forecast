@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/services/sdk_initializer.dart';
+import 'core/services/firebase_messaging_service.dart';
 import 'firebase_options.dart';
 import 'package:flutter/cupertino.dart';
 import 'core/screens/splash_screen.dart';
@@ -30,6 +31,22 @@ void main() async {
         print('Firebase already initialized or error: $e');
       }
       // Firebase уже инициализирован, продолжаем
+    }
+    
+    // Инициализируем Firebase Messaging сразу после Firebase Core
+    // Это критично для обработки пушей из terminated state
+    try {
+      if (kDebugMode) {
+        print('Initializing Firebase Messaging...');
+      }
+      await FirebaseMessagingService.InitPushAndGetToken();
+      if (kDebugMode) {
+        print('Firebase Messaging initialized');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error initializing Firebase Messaging: $e');
+      }
     }
     
     SdkInitializer.prefs = await SharedPreferences.getInstance();
