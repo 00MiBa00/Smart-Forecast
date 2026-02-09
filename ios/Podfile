@@ -65,15 +65,18 @@ post_install do |installer|
   if File.exist?(sdwebimage_path)
     puts "🔧 Patching SDImageIOCoder.m for Xcode 15+ compatibility..."
     
-    content = File.read(sdwebimage_path)
-    original_content = content.dup
-    
-    # Only comment out CoreServices import
-    content.gsub!('#import <CoreServices/CoreServices.h>', '// #import <CoreServices/CoreServices.h>')
-    
-    # Replace the problematic UTType code block (around line 207-215)
-    # Find and replace the entire block that uses CoreServices functions
-    old_block = <<~OBJC
+    begin
+      # Make file writable first (important for CI)
+      FileUtils.chmod(0644, sdwebimage_path)
+      
+      content = File.read(sdwebimage_path)
+      original_content = content.dup
+      
+      # Only comment out CoreServices import
+      content.gsub!('#import <CoreServices/CoreServices.h>', '// #import <CoreServices/CoreServices.h>')
+      
+      # Replace the problematic UTType code block (around line 207-215)
+      old_block = <<~OBJC
         CFStringRef uti = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)pathExtension, kUTTypeImage);
         if (uti == NULL) {
             imageUTType = kUTTypeImage;
@@ -83,21 +86,25 @@ post_install do |installer|
             imageUTType = kUTTypeImage;
             CFRelease(uti);
         }
-    OBJC
-    
-    new_block = <<~OBJC
+      OBJC
+      
+      new_block = <<~OBJC
         // CoreServices code disabled for Xcode 15+ compatibility
         // Default to public.image UTI
         imageUTType = (__bridge CFStringRef)@"public.image";
-    OBJC
-    
-    content.gsub!(old_block.strip, new_block.strip)
-    
-    if content != original_content
-      File.write(sdwebimage_path, content)
-      puts "✅ Successfully patched SDImageIOCoder.m"
-    else
-      puts "⚠️  No changes needed or pattern not found"
+      OBJC
+      
+      content.gsub!(old_block.strip, new_block.strip)
+      
+      if content != original_content
+        File.write(sdwebimage_path, content)
+        puts "✅ Successfully patched SDImageIOCoder.m"
+      else
+        puts "⚠️  No changes needed or pattern not found"
+      end
+    rescue => e
+      puts "❌ Failed to patch SDImageIOCoder.m: #{e.message}"
+      puts "Continuing with build anyway..."
     end
   else
     puts "⚠️  SDImageIOCoder.m not found at #{sdwebimage_path}"
