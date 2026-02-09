@@ -198,19 +198,6 @@ class SdkInitializer {
     }
     _context = context;
 
-    // Initialize Firebase Messaging early to handle push notifications
-    await FirebaseMessagingService.InitPushAndGetToken();
-    
-    // Check if we have a push URL from notification tap (terminated/background state)
-    if (pushURL != null && pushURL!.isNotEmpty) {
-      if (kDebugMode) {
-        print('=== Push URL detected on app start: $pushURL');
-      }
-      // Navigate to WebView with push URL immediately
-      showWeb(context);
-      return;
-    }
-
     var isFirstStart = !hasValue("isFirstStart");
     if (!isFirstStart) {
       var isOrganic = getValue("Organic");
@@ -220,6 +207,20 @@ class SdkInitializer {
           print(conversion);
         }
         receivedUrl = await makeConversion(conversion);
+        
+        // Check for push notification that opened the app BEFORE showing Push Request
+        await FirebaseMessagingService.InitPushAndGetToken();
+        
+        // Check if we have a push URL from notification tap (terminated/background state)
+        if (pushURL != null && pushURL!.isNotEmpty) {
+          if (kDebugMode) {
+            print('=== Push URL detected from notification tap: $pushURL');
+          }
+          // Navigate to WebView with push URL immediately, skip Push Request
+          showWeb(context);
+          return;
+        }
+        
         if (PushRequestControl.shouldShowPushRequest(pushRequestData!)) {
           Navigator.pushAndRemoveUntil(
             _context!,

@@ -43,7 +43,16 @@ class FirebaseMessagingService {
     // Check for initial message that opened the app from terminated state
     final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null) {
-      _onMessageOpenedApp(initialMessage);
+      if (kDebugMode) {
+        print('=== Initial message from terminated state: ${initialMessage.data}');
+      }
+      // Extract URL but don't navigate yet - let initAll() handle navigation
+      if (initialMessage.data.containsKey('url')) {
+        SdkInitializer.pushURL = initialMessage.data['url'];
+        if (kDebugMode) {
+          print('=== Saved push URL from terminated state: ${SdkInitializer.pushURL}');
+        }
+      }
     }
     return token;
   }
@@ -153,10 +162,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     print('Background message received (app terminated): ${message.data.toString()}');
   }
   
-  // Extract and save URL for when the app starts
-  if (message.data.containsKey('url')) {
-    final url = message.data['url'];
-    SdkInitializer.pushURL = url;
+  // Note: Cannot save to static variables here when app is fully terminated
+  // URL will be retrieved via getInitialMessage() when app starts
     if (kDebugMode) {
       print('Saved push URL from terminated state: $url');
     }
