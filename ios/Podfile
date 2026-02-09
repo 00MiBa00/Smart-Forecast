@@ -51,12 +51,6 @@ post_install do |installer|
     
     target.build_configurations.each do |config|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
-      
-      # Xcode 15+ CoreServices compatibility
-      xcconfig_path = config.base_configuration_reference.real_path
-      xcconfig = File.read(xcconfig_path)
-      xcconfig_mod = xcconfig.gsub(/DT_TOOLCHAIN_DIR/, "TOOLCHAIN_DIR")
-      File.open(xcconfig_path, "w") { |file| file << xcconfig_mod }
     end
     
     if target.name == 'notifications'
@@ -67,5 +61,45 @@ post_install do |installer|
   end
   
   # Fix SDWebImage CoreServices issue for Xcode 15+
-  system("find #{installer.sandbox.root} -name 'SDImageIOCoder.m' -exec sed -i '' 's/#import <CoreServices\\/CoreServices.h>/\\/\\/ #import <CoreServices\\/CoreServices.h>/g' {} \\;")
+  sdwebimage_path = File.join(installer.sandbox.root, 'SDWebImage/SDWebImage/Core/SDImageIOCoder.m')
+  if File.exist?(sdwebimage_path)
+    puts "🔧 Patching SDImageIOCoder.m for Xcode 15+ compatibility..."
+    
+    content = File.read(sdwebimage_path)
+    original_content = content.dup
+    
+    # Only comment out CoreServices import
+    content.gsub!('#import <CoreServices/CoreServices.h>', '// #import <CoreServices/CoreServices.h>')
+    
+    # Replace the problematic UTType code block (around line 207-215)
+    # Find and replace the entire block that uses CoreServices functions
+    old_block = <<~OBJC
+        CFStringRef uti = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)pathExtension, kUTTypeImage);
+        if (uti == NULL) {
+            imageUTType = kUTTypeImage;
+        } else if (!UTTypeIsDynamic(uti)) {
+            imageUTType = uti;
+        } else {
+            imageUTType = kUTTypeImage;
+            CFRelease(uti);
+        }
+    OBJC
+    
+    new_block = <<~OBJC
+        // CoreServices code disabled for Xcode 15+ compatibility
+        // Default to public.image UTI
+        imageUTType = (__bridge CFStringRef)@"public.image";
+    OBJC
+    
+    content.gsub!(old_block.strip, new_block.strip)
+    
+    if content != original_content
+      File.write(sdwebimage_path, content)
+      puts "✅ Successfully patched SDImageIOCoder.m"
+    else
+      puts "⚠️  No changes needed or pattern not found"
+    end
+  else
+    puts "⚠️  SDImageIOCoder.m not found at #{sdwebimage_path}"
+  end
 end
