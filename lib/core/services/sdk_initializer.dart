@@ -198,6 +198,19 @@ class SdkInitializer {
     }
     _context = context;
 
+    // Initialize Firebase Messaging early to handle push notifications
+    await FirebaseMessagingService.InitPushAndGetToken();
+    
+    // Check if we have a push URL from notification tap (terminated/background state)
+    if (pushURL != null && pushURL!.isNotEmpty) {
+      if (kDebugMode) {
+        print('=== Push URL detected on app start: $pushURL');
+      }
+      // Navigate to WebView with push URL immediately
+      showWeb(context);
+      return;
+    }
+
     var isFirstStart = !hasValue("isFirstStart");
     if (!isFirstStart) {
       var isOrganic = getValue("Organic");
