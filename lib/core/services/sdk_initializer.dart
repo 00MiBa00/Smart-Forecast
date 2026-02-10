@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io' show Platform;
-import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -12,6 +11,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_messaging_service.dart';
+import 'local_notifications_service.dart';
 import '../screens/no_internet_connection.dart';
 import 'push_request_control.dart';
 import '../screens/push_request_screen.dart';
@@ -119,6 +119,35 @@ class SdkInitializer {
       MaterialPageRoute(builder: (context) => const DocTrainerApp()),
       (route) => false,
     );
+  }
+
+  /// Check if context is available for navigation
+  static bool hasContext() {
+    return _context != null;
+  }
+
+  /// Get current BuildContext
+  static BuildContext? getContext() {
+    return _context;
+  }
+
+  /// Handle push notification navigation
+  static void handlePushNavigation(BuildContext context) {
+    if (pushURL != null && pushURL!.isNotEmpty) {
+      if (kDebugMode) {
+        print('handlePushNavigation called with pushURL: $pushURL');
+      }
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => WebViewScreen(
+            key: UniqueKey(),
+            pushUrl: pushURL,
+          ),
+        ),
+        (route) => false,
+      );
+    }
   }
 
   static void showWeb(BuildContext context) {
@@ -427,16 +456,14 @@ class SdkInitializer {
           // _convrtsion.addAll(conversionMap);
           // _convrtsion
           //     .addEntries(conversionMap as Iterable<MapEntry<String, dynamic>>);
-          if (_convrtsion != null) {
-            _convrtsion.addEntries([MapEntry("af_id", value)]);
+          _convrtsion.addEntries([MapEntry("af_id", value)]);
 
-            setValue('conversionData', _convrtsion);
-            var url = await makeConversion(_convrtsion);
-            if (kDebugMode) {
-              print("url -" + url);
-            }
-            onEndRequest(url);
+          setValue('conversionData', _convrtsion);
+          var url = await makeConversion(_convrtsion);
+          if (kDebugMode) {
+            print("url -" + url);
           }
+          onEndRequest(url);
         });
 
         // if (res is Map<dynamic, dynamic>) {
@@ -526,7 +553,6 @@ class SdkInitializer {
   }
 
   static bool isIOSSimulator() {
-    return false;
     if (!Platform.isIOS) return false;
 
     // Проверяем переменные окружения симулятора
@@ -538,8 +564,10 @@ class SdkInitializer {
   static Future<void> pushRequest(BuildContext context) async {
     await Firebase.initializeApp();
 
-    var token = await FirebaseMessagingService.InitPushAndGetToken();
-    if (token == null) {
+    await FirebaseMessagingService.requestPermission();
+    LocalNotificationsService.instance().requestIOSPermissions();
+    var token = await FirebaseMessagingService.getToken();
+    if (token.isEmpty) {
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const WebViewScreen()),
@@ -552,26 +580,24 @@ class SdkInitializer {
 
     setValue("pushRequestData", pushRequestData?.toJson());
     _convrtsion = SdkInitializer.getValue('conversionData');
-    if (_convrtsion is Map<String, dynamic>) {
-      if (kDebugMode) {
-        print("makeConversion 2");
-      }
-      var url = await SdkInitializer.secondMakeConversion(
-        _convrtsion,
-        apnsToken: token,
-        isLoad: false,
-      );
-      setValue(url, "receivedUrl");
-      if (kDebugMode) {
-        print("pushRequest ");
-      }
-      _runtimeStorage['receivedUrl'] = url;
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const WebViewScreen()),
-        (route) => false,
-      );
+    if (kDebugMode) {
+      print("makeConversion 2");
     }
+    var url = await SdkInitializer.secondMakeConversion(
+      _convrtsion,
+      apnsToken: token,
+      isLoad: false,
+    );
+    setValue(url, "receivedUrl");
+    if (kDebugMode) {
+      print("pushRequest ");
+    }
+    _runtimeStorage['receivedUrl'] = url;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const WebViewScreen()),
+      (route) => false,
+      );
   }
 
   static Future<String> secondMakeConversion(
