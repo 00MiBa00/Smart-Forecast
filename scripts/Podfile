@@ -75,14 +75,20 @@ post_install do |installer|
           # Make file writable
           File.chmod(0644, file_path)
           
-          # Comment out CoreServices import
-          content.gsub!('#import <CoreServices/CoreServices.h>', '// #import <CoreServices/CoreServices.h> // PATCHED FOR XCODE 15+')
+          # Comment out CoreServices import if not already commented
+          content.gsub!(/#import <CoreServices\/CoreServices\.h>/, '// #import <CoreServices/CoreServices.h> // PATCHED FOR XCODE 15+')
           
-          # Replace the entire problematic UTType block with a simple implementation
-          # This block tries to get file extension from MIME type using CoreServices
+          # Replace the two problematic lines with simple extension-based implementation
+          # Line 1: UTTypeCreatePreferredIdentifierForTag call
           content.gsub!(
-            /CFStringRef utiRef[\s\S]*?CFRelease\(extRef\);/,
-            '// Original UTType code replaced for Xcode 15+ compatibility\n        NSString *ext = @"jpg"; // Default extension'
+            /typeIdentifierHint = \(__bridge_transfer NSString \*\)UTTypeCreatePreferredIdentifierForTag\(kUTTagClassFilenameExtension, \(__bridge CFStringRef\)fileExtensionHint, kUTTypeImage\);/,
+            'typeIdentifierHint = [@"public." stringByAppendingString:fileExtensionHint]; // PATCHED FOR XCODE 15+'
+          )
+          
+          # Line 2: Comment out the UTTypeIsDynamic check (now unnecessary)
+          content.gsub!(
+            /if \(UTTypeIsDynamic\(\(__bridge CFStringRef\)typeIdentifierHint\)\) \{\s+typeIdentifierHint = nil;\s+\}/m,
+            '// UTTypeIsDynamic check removed for Xcode 15+ compatibility'
           )
           
           # Write back
