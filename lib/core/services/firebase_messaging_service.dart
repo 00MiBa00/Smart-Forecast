@@ -128,6 +128,38 @@ class FirebaseMessagingService {
 
     return token;
   }
+
+  /// Requests notification permission from the user
+  /// This should only be called when user accepts on custom push request screen
+  static Future<void> requestPermission() async {
+    final result = await FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+    if (kDebugMode) {
+      print('User granted permission: ${result.authorizationStatus}');
+    }
+  }
+
+  /// Gets FCM token after user has granted permission
+  /// This should only be called AFTER requestPermission() has been called
+  static Future<String> getToken() async {
+    final token = await FirebaseMessaging.instance.getToken();
+    if (kDebugMode) {
+      print('Push notifications token: $token');
+    }
+    FirebaseMessaging.instance.onTokenRefresh.listen((fcmToken) {
+      if (kDebugMode) {
+        print('FCM token refreshed: $fcmToken');
+      }
+    }).onError((error) {
+      if (kDebugMode) {
+        print('Error refreshing FCM token: $error');
+      }
+    });
+    return token!;
+  }
 }
 
 /// Background message handler (must be top-level function or static)
