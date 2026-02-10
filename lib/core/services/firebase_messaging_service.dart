@@ -164,8 +164,4 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   
   // Note: Cannot save to static variables here when app is fully terminated
   // URL will be retrieved via getInitialMessage() when app starts
-    if (kDebugMode) {
-      print('Saved push URL from terminated state: $url');
-    }
-  }
 }

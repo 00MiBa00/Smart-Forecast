@@ -61,52 +61,29 @@ post_install do |installer|
   end
   
   # Fix SDWebImage CoreServices issue for Xcode 15+
-  sdwebimage_path = File.join(installer.sandbox.root, 'SDWebImage/SDWebImage/Core/SDImageIOCoder.m')
+  sdwebimage_path = "#{installer.sandbox.root}/SDWebImage/SDWebImage/Core/SDImageIOCoder.m"
   if File.exist?(sdwebimage_path)
     puts "🔧 Patching SDImageIOCoder.m for Xcode 15+ compatibility..."
     
-    begin
-      # Make file writable first (important for CI)
-      FileUtils.chmod(0644, sdwebimage_path)
-      
-      content = File.read(sdwebimage_path)
-      original_content = content.dup
-      
-      # Only comment out CoreServices import
-      content.gsub!('#import <CoreServices/CoreServices.h>', '// #import <CoreServices/CoreServices.h>')
-      
-      # Replace the problematic UTType code block (around line 207-215)
-      old_block = <<~OBJC
-        CFStringRef uti = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)pathExtension, kUTTypeImage);
-        if (uti == NULL) {
-            imageUTType = kUTTypeImage;
-        } else if (!UTTypeIsDynamic(uti)) {
-            imageUTType = uti;
-        } else {
-            imageUTType = kUTTypeImage;
-            CFRelease(uti);
-        }
-      OBJC
-      
-      new_block = <<~OBJC
-        // CoreServices code disabled for Xcode 15+ compatibility
-        // Default to public.image UTI
-        imageUTType = (__bridge CFStringRef)@"public.image";
-      OBJC
-      
-      content.gsub!(old_block.strip, new_block.strip)
-      
-      if content != original_content
-        File.write(sdwebimage_path, content)
-        puts "✅ Successfully patched SDImageIOCoder.m"
-      else
-        puts "⚠️  No changes needed or pattern not found"
-      end
-    rescue => e
-      puts "❌ Failed to patch SDImageIOCoder.m: #{e.message}"
-      puts "Continuing with build anyway..."
-    end
+    # Make file writable
+    system("chmod 644 '#{sdwebimage_path}'")
+    
+    # Comment out CoreServices import
+    system("sed -i '' 's|#import <CoreServices/CoreServices.h>|// #import <CoreServices/CoreServices.h>|g' '#{sdwebimage_path}'")
+    
+    # Replace the problematic UTType function calls with simpler alternatives
+    # This replaces the entire block from line 208-212
+    system("sed -i '' '208,212d' '#{sdwebimage_path}'")
+    system("sed -i '' '207a\\
+            // CoreServices functions disabled for Xcode 15+ compatibility\\
+            // Use simple file extension based type hint\\
+            if (fileExtensionHint) {\\
+                typeIdentifierHint = [@\"public.\" stringByAppendingString:fileExtensionHint];\\
+            }
+' '#{sdwebimage_path}'")
+    
+    puts "✅ SDImageIOCoder.m patching completed"
   else
-    puts "⚠️  SDImageIOCoder.m not found at #{sdwebimage_path}"
+    puts "⚠️  SDImageIOCoder.m not found"
   end
 end
