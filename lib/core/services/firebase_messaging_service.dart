@@ -20,16 +20,14 @@ class FirebaseMessagingService {
   LocalNotificationsService? _localNotificationsService;
 
   /// Initialize Firebase Messaging and sets up all message listeners
-  Future<String> init(
+  /// Does NOT request permission or get token - that happens only when user accepts
+  Future<void> init(
       {required LocalNotificationsService localNotificationsService}) async {
     // Init local notifications service
     _localNotificationsService = localNotificationsService;
 
-    // Handle FCM token
-    var token = await _handlePushNotificationsToken();
-
-    // NOTE: We don't request permission here automatically.
-    // Permission is requested only when user accepts on custom push request screen.
+    // NOTE: We DON'T call getToken() here because on iOS it triggers system permission dialog
+    // Token will be obtained only after user accepts on custom push request screen
 
     // Register handler for background messages (app terminated)
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -54,12 +52,13 @@ class FirebaseMessagingService {
         }
       }
     }
-    return token;
   }
 
-  /// Retrieves and manages the FCM token for push notifications
-  Future<String> _handlePushNotificationsToken() async {
+  /// Gets FCM token after user has granted permission
+  /// This should only be called AFTER requestPermission() has been called
+  static Future<String> getToken() async {
     // Get the FCM token for the device
+    // On iOS, this will trigger system permission dialog if not already granted
     final token = await FirebaseMessaging.instance.getToken();
     if (kDebugMode) {
       print('Push notifications token: $token');
@@ -143,15 +142,15 @@ class FirebaseMessagingService {
     }
   }
 
-  static Future<String> InitPushAndGetToken() async {
+  /// Initializes Firebase Messaging without requesting permissions or token
+  /// Call this at app startup to set up listeners
+  static Future<void> initialize() async {
     final localNotificationsService = LocalNotificationsService.instance();
     await localNotificationsService.init();
 
     final firebaseMessagingService = FirebaseMessagingService.instance();
-    var token = await firebaseMessagingService.init(
+    await firebaseMessagingService.init(
         localNotificationsService: localNotificationsService);
-
-    return token;
   }
 }
 

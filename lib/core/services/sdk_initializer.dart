@@ -208,8 +208,8 @@ class SdkInitializer {
         }
         receivedUrl = await makeConversion(conversion);
         
-        // Check for push notification that opened the app BEFORE showing Push Request
-        await FirebaseMessagingService.InitPushAndGetToken();
+        // Initialize Firebase Messaging (without requesting permission or token)
+        await FirebaseMessagingService.initialize();
         
         // Check if we have a push URL from notification tap (terminated/background state)
         if (pushURL != null && pushURL!.isNotEmpty) {
@@ -575,47 +575,48 @@ class SdkInitializer {
     // );
   }
 
-  /// Запрашивает APNS токен через FirebaseMessaging
-  static Future<String?> requestAPNSToken() async {
-    try {
-      // Запрашиваем разрешение на пуш-уведомления (для iOS запрос обязателен)
-      await FirebaseMessaging.instance.requestPermission();
-
-      // Убеждаемся, что FCM token получен (это запустит регистрацию и выдачу APNS токена на iOS)
-      var token = await FirebaseMessaging.instance.getAPNSToken();
-      if (kDebugMode) {
-        print("first token");
-      }
-      if (kDebugMode) {
-        print(token);
-      }
-      if (kDebugMode) {
-        print(DefaultFirebaseOptions.currentPlatform.projectId);
-      }
-      String? apnsToken;
-      int retries = 10;
-      // Ждём пока APNS токен не станет доступен
-      for (int i = 0; i < retries; i++) {
-        apnsToken = await FirebaseMessaging.instance.getAPNSToken();
-        if (apnsToken != null && apnsToken.isNotEmpty) {
-          if (kDebugMode) {
-            print('APNS токен получен: $apnsToken');
-          }
-          return apnsToken;
-        }
-        await Future.delayed(const Duration(milliseconds: 500));
-      }
-      if (kDebugMode) {
-        print('APNS токен не получен (timeout)');
-      }
-      return null;
-    } catch (e) {
-      if (kDebugMode) {
-        print('Ошибка при получении APNS токена: $e');
-      }
-      return null;
-    }
-  }
+  /// DEPRECATED: This method is not used and contains direct requestPermission() call
+  /// DO NOT USE - use FirebaseMessagingService.requestPermission() and getToken() instead
+  // static Future<String?> requestAPNSToken() async {
+  //   try {
+  //     // Запрашиваем разрешение на пуш-уведомления (для iOS запрос обязателен)
+  //     await FirebaseMessaging.instance.requestPermission();
+  //
+  //     // Убеждаемся, что FCM token получен (это запустит регистрацию и выдачу APNS токена на iOS)
+  //     var token = await FirebaseMessaging.instance.getAPNSToken();
+  //     if (kDebugMode) {
+  //       print("first token");
+  //     }
+  //     if (kDebugMode) {
+  //       print(token);
+  //     }
+  //     if (kDebugMode) {
+  //       print(DefaultFirebaseOptions.currentPlatform.projectId);
+  //     }
+  //     String? apnsToken;
+  //     int retries = 10;
+  //     // Ждём пока APNS токен не станет доступен
+  //     for (int i = 0; i < retries; i++) {
+  //       apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+  //       if (apnsToken != null && apnsToken.isNotEmpty) {
+  //         if (kDebugMode) {
+  //           print('APNS токен получен: $apnsToken');
+  //         }
+  //         return apnsToken;
+  //       }
+  //       await Future.delayed(const Duration(milliseconds: 500));
+  //     }
+  //     if (kDebugMode) {
+  //       print('APNS токен не получен (timeout)');
+  //     }
+  //     return null;
+  //   } catch (e) {
+  //     if (kDebugMode) {
+  //       print('Ошибка при получении APNS токена: $e');
+  //     }
+  //     return null;
+  //   }
+  // }
 
   static bool isIOSSimulator() {
     if (!Platform.isIOS) return false;
@@ -632,7 +633,8 @@ class SdkInitializer {
     // Request system permission for notifications
     await FirebaseMessagingService.requestPermission();
 
-    var token = await FirebaseMessagingService.InitPushAndGetToken();
+    // Now get the FCM token (after permission is granted)
+    var token = await FirebaseMessagingService.getToken();
 
     PushRequestControl.acceptPushRequest(pushRequestData!);
 
