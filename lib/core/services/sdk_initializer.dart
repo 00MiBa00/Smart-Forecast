@@ -629,6 +629,9 @@ class SdkInitializer {
   static Future<void> pushRequest(BuildContext context) async {
     // Firebase уже инициализирован в main.dart
 
+    // Request system permission for notifications
+    await FirebaseMessagingService.requestPermission();
+
     var token = await FirebaseMessagingService.InitPushAndGetToken();
 
     PushRequestControl.acceptPushRequest(pushRequestData!);

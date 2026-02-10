@@ -28,8 +28,8 @@ class FirebaseMessagingService {
     // Handle FCM token
     var token = await _handlePushNotificationsToken();
 
-    // Request user permission for notifications
-    _requestPermission();
+    // NOTE: We don't request permission here automatically.
+    // Permission is requested only when user accepts on custom push request screen.
 
     // Register handler for background messages (app terminated)
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -83,7 +83,8 @@ class FirebaseMessagingService {
   }
 
   /// Requests notification permission from the user
-  Future<void> _requestPermission() async {
+  /// This should only be called when user accepts on custom push request screen
+  static Future<void> requestPermission() async {
     // Request permission for alerts, badges, and sounds
     final result = await FirebaseMessaging.instance.requestPermission(
       alert: true,
