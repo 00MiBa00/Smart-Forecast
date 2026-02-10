@@ -58,5 +58,36 @@ post_install do |installer|
         config.build_settings['APPLICATION_EXTENSION_API_ONLY'] = 'YES'
       end
     end
+    
+    # Fix for SDWebImage CoreServices issue in Xcode 15+
+    if target.name == 'SDWebImage'
+      puts "Patching SDWebImage for Xcode 15+ CoreServices compatibility..."
+      
+      file_path = 'Pods/SDWebImage/SDWebImage/Core/SDImageIOCoder.m'
+      
+      if File.exist?(file_path)
+        content = File.read(file_path)
+        
+        # Check if already patched
+        unless content.include?('CoreServices patched')
+          puts "Applying patch to #{file_path}..."
+          
+          # Make file writable
+          File.chmod(0644, file_path)
+          
+          # Use shell commands for more reliable patching
+          system("sed -i '' 's|#import <CoreServices/CoreServices.h>|// #import <CoreServices/CoreServices.h> // CoreServices patched|g' '#{file_path}'")
+          
+          # Comment out problematic UTType lines (lines around 208-212)
+          system("sed -i '' '/UTTypeCreatePreferredIdentifierForTag/,/CFRelease(extRef)/s|^|// |' '#{file_path}'")
+          
+          puts "✅ SDWebImage patched successfully"
+        else
+          puts "SDWebImage already patched"
+        end
+      else
+        puts "⚠️ SDWebImage file not found, skipping patch"
+      end
+    end
   end
 end
