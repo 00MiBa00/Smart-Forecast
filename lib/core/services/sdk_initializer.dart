@@ -151,13 +151,14 @@ class SdkInitializer {
     }
     
     if (pushURL != null && pushURL!.isNotEmpty) {
+      final urlToOpen = pushURL!; // Capture the URL before navigation
       if (kDebugMode) {
-        print('✅ Navigating to WebView with pushURL: $pushURL');
+        print('✅ Navigating to WebView with pushURL parameter: $urlToOpen');
       }
-      // Navigate to WebView which will use pushURL
+      // Navigate to WebView and pass pushURL as parameter (not via global variable)
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (context) => const WebViewScreen()),
+        MaterialPageRoute(builder: (context) => WebViewScreen(pushUrl: urlToOpen)),
         (route) => false,
       );
     } else {

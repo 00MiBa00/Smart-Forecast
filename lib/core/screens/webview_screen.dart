@@ -9,8 +9,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 class WebViewScreen extends StatefulWidget {
   final String initialUrl;
+  final String? pushUrl; // URL from push notification (highest priority)
 
-  const WebViewScreen({super.key, this.initialUrl = 'https://flutter.dev'});
+  const WebViewScreen({super.key, this.initialUrl = 'https://flutter.dev', this.pushUrl});
 
   @override
   State<WebViewScreen> createState() => _WebViewScreenState();
@@ -90,18 +91,28 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
     if (kDebugMode) {
       print('=== WEBVIEW INITSTATE START ===');
-      print('pushURL: ${SdkInitializer.pushURL}');
+      print('widget.pushUrl (parameter): ${widget.pushUrl}');
+      print('SdkInitializer.pushURL (global): ${SdkInitializer.pushURL}');
       print('receivedUrl: ${SdkInitializer.receivedUrl}');
       print('initialUrl: ${widget.initialUrl}');
     }
 
-    // PRIORITY ORDER: pushURL (from push notification) > receivedUrl (from AppsFlyer) > initialUrl
+    // PRIORITY ORDER: widget.pushUrl (parameter) > SdkInitializer.pushURL (global) > receivedUrl (from AppsFlyer) > initialUrl
     String urlToLoad;
     
-    if (SdkInitializer.pushURL != null && SdkInitializer.pushURL!.isNotEmpty) {
-      // Push notification URL has highest priority
+    // First check pushUrl parameter (passed directly from push handler)
+    if (widget.pushUrl != null && widget.pushUrl!.isNotEmpty) {
       if (kDebugMode) {
-        print('✅ WEBVIEW: Using pushURL: ${SdkInitializer.pushURL}');
+        print('✅ WEBVIEW: Using widget.pushUrl parameter: ${widget.pushUrl}');
+      }
+      urlToLoad = widget.pushUrl!;
+      // Clear global pushURL as we used the parameter
+      SdkInitializer.pushURL = null;
+    }
+    // Then check global pushURL (for backward compatibility)
+    else if (SdkInitializer.pushURL != null && SdkInitializer.pushURL!.isNotEmpty) {
+      if (kDebugMode) {
+        print('✅ WEBVIEW: Using global SdkInitializer.pushURL: ${SdkInitializer.pushURL}');
       }
       urlToLoad = SdkInitializer.pushURL!;
       // Clear pushURL after using it to prevent reuse on next WebView open
@@ -109,10 +120,11 @@ class _WebViewScreenState extends State<WebViewScreen> {
       if (kDebugMode) {
         print('pushURL cleared after use');
       }
-    } else {
-      // Fallback to receivedUrl or initialUrl
+    } 
+    // Finally fallback to receivedUrl or initialUrl
+    else {
       if (kDebugMode) {
-        print('⚠️ WEBVIEW: pushURL is null or empty, using receivedUrl or initialUrl');
+        print('⚠️ WEBVIEW: No pushURL, using receivedUrl or initialUrl');
         print('receivedUrl value: ${SdkInitializer.receivedUrl}');
       }
       String? savedUrl = SdkInitializer.receivedUrl;
