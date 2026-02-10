@@ -88,30 +88,38 @@ class _WebViewScreenState extends State<WebViewScreen> {
   void initState() {
     super.initState();
 
+    if (kDebugMode) {
+      print('=== WEBVIEW INITSTATE START ===');
+      print('pushURL: ${SdkInitializer.pushURL}');
+      print('receivedUrl: ${SdkInitializer.receivedUrl}');
+      print('initialUrl: ${widget.initialUrl}');
+    }
+
     // PRIORITY ORDER: pushURL (from push notification) > receivedUrl (from AppsFlyer) > initialUrl
     String urlToLoad;
     
     if (SdkInitializer.pushURL != null && SdkInitializer.pushURL!.isNotEmpty) {
       // Push notification URL has highest priority
       if (kDebugMode) {
-        print('=== WEBVIEW: Using pushURL: ${SdkInitializer.pushURL}');
+        print('✅ WEBVIEW: Using pushURL: ${SdkInitializer.pushURL}');
       }
       urlToLoad = SdkInitializer.pushURL!;
       // Clear pushURL after using it to prevent reuse on next WebView open
       SdkInitializer.pushURL = null;
+      if (kDebugMode) {
+        print('pushURL cleared after use');
+      }
     } else {
       // Fallback to receivedUrl or initialUrl
       if (kDebugMode) {
-        print('=== WEBVIEW: pushURL is null, checking receivedUrl');
+        print('⚠️ WEBVIEW: pushURL is null or empty, using receivedUrl or initialUrl');
+        print('receivedUrl value: ${SdkInitializer.receivedUrl}');
       }
       String? savedUrl = SdkInitializer.receivedUrl;
       urlToLoad = savedUrl ?? widget.initialUrl;
     }
     if (kDebugMode) {
-      print("3 showWeb urlToLoad: $urlToLoad");
-    }
-    if (kDebugMode) {
-      print("3 surlToLoad -${urlToLoad}-");
+      print("=== FINAL URL TO LOAD: $urlToLoad ===");
     }
     controller = WebKitWebViewController(
       WebKitWebViewControllerCreationParams(

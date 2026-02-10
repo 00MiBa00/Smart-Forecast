@@ -8,8 +8,8 @@ import '../app_config.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_messaging_service.dart';
+import 'local_notifications_service.dart';
 import '../screens/no_internet_connection.dart';
 import 'push_request_control.dart';
 import '../screens/push_request_screen.dart';
@@ -145,10 +145,15 @@ class SdkInitializer {
   /// Handle push notification tap - navigate to WebView with pushURL
   static void handlePushNavigation(BuildContext context) {
     if (kDebugMode) {
-      print('handlePushNavigation called, pushURL: $pushURL');
+      print('=== handlePushNavigation START ===');
+      print('pushURL: $pushURL');
+      print('receivedUrl: $receivedUrl');
     }
     
     if (pushURL != null && pushURL!.isNotEmpty) {
+      if (kDebugMode) {
+        print('✅ Navigating to WebView with pushURL: $pushURL');
+      }
       // Navigate to WebView which will use pushURL
       Navigator.pushAndRemoveUntil(
         context,
@@ -157,7 +162,7 @@ class SdkInitializer {
       );
     } else {
       if (kDebugMode) {
-        print('handlePushNavigation: pushURL is empty');
+        print('❌ handlePushNavigation: pushURL is empty or null!');
       }
     }
   }
@@ -630,11 +635,22 @@ class SdkInitializer {
   static Future<void> pushRequest(BuildContext context) async {
     // Firebase уже инициализирован в main.dart
 
-    // Request system permission for notifications
+    if (kDebugMode) {
+      print('=== pushRequest: User accepted push notifications ===');
+    }
+
+    // Request system permission for notifications (Firebase)
     await FirebaseMessagingService.requestPermission();
+
+    // Request iOS local notification permissions
+    await LocalNotificationsService.instance().requestIOSPermissions();
 
     // Now get the FCM token (after permission is granted)
     var token = await FirebaseMessagingService.getToken();
+
+    if (kDebugMode) {
+      print('FCM token obtained: $token');
+    }
 
     PushRequestControl.acceptPushRequest(pushRequestData!);
 

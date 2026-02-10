@@ -115,23 +115,30 @@ class FirebaseMessagingService {
   /// Handles notification taps when app is opened from the background or terminated state
   void _onMessageOpenedApp(RemoteMessage message) {
     if (kDebugMode) {
-      print('=== PUSH TAP HANDLER ===' );
+      print('=== PUSH TAP HANDLER (Background/Terminated) ===' );
       print('Full message data: ${message.data.toString()}');
       print('Available keys: ${message.data.keys.toList()}');
+      print('Current pushURL before setting: ${SdkInitializer.pushURL}');
+      print('Current receivedUrl: ${SdkInitializer.receivedUrl}');
     }
     // Extract URL from message data properly
     if (message.data.containsKey('url')) {
-      SdkInitializer.pushURL = message.data['url'];
+      final urlFromPush = message.data['url'];
+      SdkInitializer.pushURL = urlFromPush;
       if (kDebugMode) {
-        print('Push URL set to: ${SdkInitializer.pushURL}');
+        print('✅ Push URL set to: ${SdkInitializer.pushURL}');
+        print('Verifying pushURL is saved: ${SdkInitializer.pushURL}');
       }
       
       // Trigger navigation to WebView if context is available
       if (SdkInitializer.hasContext()) {
+        if (kDebugMode) {
+          print('Context available, calling handlePushNavigation with pushURL: ${SdkInitializer.pushURL}');
+        }
         SdkInitializer.handlePushNavigation(SdkInitializer.getContext()!);
       } else {
         if (kDebugMode) {
-          print('Context not available yet, navigation will happen on app resume');
+          print('Context not available yet, pushURL saved for later: ${SdkInitializer.pushURL}');
         }
       }
     } else {

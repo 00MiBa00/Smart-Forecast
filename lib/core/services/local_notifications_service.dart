@@ -22,11 +22,12 @@ class LocalNotificationsService {
   final _androidInitializationSettings =
       const AndroidInitializationSettings('@mipmap/ic_launcher');
 
-  //iOS-specific initialization settings with permission requests
+  //iOS-specific initialization settings WITHOUT permission requests
+  // Permissions will be requested only when user accepts on custom push request screen
   final _iosInitializationSettings = const DarwinInitializationSettings(
-    requestAlertPermission: true,
-    requestBadgePermission: true,
-    requestSoundPermission: true,
+    requestAlertPermission: false,
+    requestBadgePermission: false,
+    requestSoundPermission: false,
   );
 
   //Android notification channel configuration
@@ -101,6 +102,24 @@ class LocalNotificationsService {
 
     // Mark initialization as complete
     _isFlutterLocalNotificationInitialized = true;
+  }
+
+  /// Request iOS local notification permissions
+  /// Should be called when user accepts push notifications on custom screen
+  Future<void> requestIOSPermissions() async {
+    if (_isFlutterLocalNotificationInitialized) {
+      await _flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(
+            alert: true,
+            badge: true,
+            sound: true,
+          );
+      if (kDebugMode) {
+        print('iOS local notification permissions requested');
+      }
+    }
   }
 
   /// Show a local notification with the given title, body, and payload.
