@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io' show Platform;
+import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -8,11 +10,12 @@ import '../app_config.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_messaging_service.dart';
-import 'local_notifications_service.dart';
 import '../screens/no_internet_connection.dart';
 import 'push_request_control.dart';
 import '../screens/push_request_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../screens/webview_screen.dart';
@@ -39,9 +42,6 @@ class SdkInitializer {
 
   static String deep_link_sub1 = "";
   static String deep_link_value = "";
-  
-  // Flag to prevent double navigation during first start
-  static bool _navigationHandled = false;
 
   /// Сохраняет содержимое _runtimeStorage в строку JSON
   static String saveRuntimeStorage() {
@@ -116,19 +116,9 @@ class SdkInitializer {
   static void showApp(BuildContext context) {
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (context) => const DocTrainerApp()),
+      MaterialPageRoute(builder: (context) => const ClearApp()),
       (route) => false,
     );
-  }
-
-  /// Check if context is available for navigation
-  static bool hasContext() {
-    return _context != null;
-  }
-
-  /// Get current context for navigation
-  static BuildContext? getContext() {
-    return _context;
   }
 
   static void showWeb(BuildContext context) {
@@ -142,35 +132,9 @@ class SdkInitializer {
     );
   }
 
-  /// Handle push notification tap - navigate to WebView with pushURL
-  static void handlePushNavigation(BuildContext context) {
-    if (kDebugMode) {
-      print('=== handlePushNavigation START ===');
-      print('pushURL: $pushURL');
-      print('receivedUrl: $receivedUrl');
-    }
-    
-    if (pushURL != null && pushURL!.isNotEmpty) {
-      final urlToOpen = pushURL!; // Capture the URL before navigation
-      if (kDebugMode) {
-        print('✅ Navigating to WebView with pushURL parameter: $urlToOpen');
-      }
-      // Navigate to WebView and pass pushURL as parameter (not via global variable)
-      // Use UniqueKey() to force Flutter to create a NEW instance instead of reusing existing one
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => WebViewScreen(key: UniqueKey(), pushUrl: urlToOpen)),
-        (route) => false,
-      );
-    } else {
-      if (kDebugMode) {
-        print('❌ handlePushNavigation: pushURL is empty or null!');
-      }
-    }
-  }
-
-  static const MethodChannel _channel =
-      MethodChannel('com.yourapp/native_methods');
+  static const MethodChannel _channel = MethodChannel(
+    'com.yourapp/native_methods',
+  );
 
   static Future<void> callSwiftMethod() async {
     try {
@@ -183,9 +147,6 @@ class SdkInitializer {
   }
 
   static Future<void> initAll(BuildContext context) async {
-    // Reset navigation flag for fresh start
-    _navigationHandled = false;
-    
     var isNotInternet =
         await NoInternetConnectionScreen.checkInternetConnection();
 
@@ -214,20 +175,6 @@ class SdkInitializer {
           print(conversion);
         }
         receivedUrl = await makeConversion(conversion);
-        
-        // Initialize Firebase Messaging (without requesting permission or token)
-        await FirebaseMessagingService.initialize();
-        
-        // Check if we have a push URL from notification tap (terminated/background state)
-        if (pushURL != null && pushURL!.isNotEmpty) {
-          if (kDebugMode) {
-            print('=== Push URL detected from notification tap: $pushURL');
-          }
-          // Navigate to WebView with push URL immediately, skip Push Request
-          showWeb(context);
-          return;
-        }
-        
         if (PushRequestControl.shouldShowPushRequest(pushRequestData!)) {
           Navigator.pushAndRemoveUntil(
             _context!,
@@ -235,7 +182,15 @@ class SdkInitializer {
             (route) => false,
           );
         } else {
-          // Push notification listeners are already set up in FirebaseMessagingService.init()
+          final initialMessage =
+              await FirebaseMessaging.instance.getInitialMessage();
+          if (initialMessage != null) {
+            _onMessageOpenedApp(initialMessage);
+          }
+          FirebaseMessaging.onMessageOpenedApp.listen(_onMessageOpenedApp);
+          FirebaseMessaging.onBackgroundMessage(
+            _firebaseMessagingBackgroundHandler,
+          );
           showWeb(context);
         }
       } else {
@@ -244,44 +199,29 @@ class SdkInitializer {
       return;
     }
 
-    // Первый запуск - ждем callback от AppsFlyer
-    // AppsFlyer уже инициализирован в main.dart с установленным callback
+    // WidgetsFlutterBinding.ensureInitialized().addPostFrameCallback((_) async {
+    //   final status =
+    //       await AppTrackingTransparency.requestTrackingAuthorization();
+    // });
+    //initAppsFlyer();
+  }
+
+  static Future<void> _firebaseMessagingBackgroundHandler(
+    RemoteMessage message,
+  ) async {
+    print("push url" + message.data['url']);
+    SdkInitializer.pushURL = message.data['url'];
+  }
+
+  static void _onMessageOpenedApp(RemoteMessage message) {
     if (kDebugMode) {
-      print('First start - waiting for AppsFlyer callback');
+      print(
+        '1 Notification caused the app to open: ${message.data.toString()}',
+      );
     }
-
-    // Ждем до 10 секунд на callback от AppsFlyer
-    int attempts = 0;
-    const maxAttempts = 50; // 50 * 200ms = 10 секунд
-    while (!hasValue("isFirstStart") && attempts < maxAttempts) {
-      await Future.delayed(const Duration(milliseconds: 200));
-      attempts++;
-
-      // Проверяем, не произошла ли навигация через callback
-      if (hasValue("isFirstStart")) {
-        if (kDebugMode) {
-          print('AppsFlyer callback received after ${attempts * 200}ms');
-        }
-        return; // Exit early, navigation already handled by callback
-      }
-    }
-
-    // Если таймаут истек и callback не пришел, считаем organic и показываем приложение
-    // Double-check to prevent race condition with callback
-    if (!hasValue("isFirstStart") && !_navigationHandled) {
-      if (kDebugMode) {
-        print('AppsFlyer timeout after ${attempts * 200}ms - showing app as organic');
-      }
-      _navigationHandled = true;
-      setValue("Organic", true);
-      setValue("isFirstStart", true);
-      await saveRuntimeStorageToDevice();
-      showApp(context);
-    } else {
-      if (kDebugMode) {
-        print('AppsFlyer callback completed during final check, navigation already handled');
-      }
-    }
+    SdkInitializer.pushURL = message.data['url'];
+    EventBus.instance.fire(message.data['url']);
+    // TODO: Add navigation or specific handling based on message data
   }
 
   static Future<String> makeConversion(
@@ -306,49 +246,19 @@ class SdkInitializer {
       url: AppConfig.endpoint + "/config.php",
     );
 
-    if (kDebugMode) {
-      print('makeConversion server response: $result');
-    }
-    
-    if (result == null) {
-      if (kDebugMode) {
-        print('makeConversion: server returned null');
-      }
-      return "";
-    }
+    // if (isLoad) {
+    //   onEndRequest(result);
+    // }
+    if (result == null) return "";
     setValue('serverResponse', result);
 
-    if (!result.containsKey("url")) {
-      if (kDebugMode) {
-        print('makeConversion: response does not contain url key');
-      }
-      return "";
-    }
+    if (!result.containsKey("url")) return "";
 
-    if (kDebugMode) {
-      print('makeConversion: extracted URL = ${result['url']}');
-    }
     return result['url'];
   }
 
   static void onEndRequest(String? url) {
-    if (kDebugMode) {
-      print('onEndRequest called with URL: $url');
-    }
-    
-    // Guard against double navigation during first start
-    if (_navigationHandled) {
-      if (kDebugMode) {
-        print('onEndRequest skipped - navigation already handled');
-      }
-      return;
-    }
-    _navigationHandled = true;
-    
     if (url == null || url == "") {
-      if (kDebugMode) {
-        print('onEndRequest: URL is empty, showing organic app');
-      }
       if (kDebugMode) {
         print('not url');
       }
@@ -361,10 +271,6 @@ class SdkInitializer {
     }
     setValue("Organic", false);
     setValue("isFirstStart", true);
-
-    if (kDebugMode) {
-      print('onEndRequest: User is NON-ORGANIC, URL = $url');
-    }
 
     // Сохраняем полный ответ сервера
     setValue('serverResponse', url);
@@ -436,7 +342,8 @@ class SdkInitializer {
           _convrtsion.addAll(map);
           if (kDebugMode) {
             print(
-                'deep_link_value=$deep_link_value deep_link_sub1=$deep_link_sub1|');
+              'deep_link_value=$deep_link_value deep_link_sub1=$deep_link_sub1|',
+            );
           }
           break;
         case Status.NOT_FOUND:
@@ -476,16 +383,7 @@ class SdkInitializer {
 
       //     });
       _appsflyerSdk?.onInstallConversionData((res) {
-        if (kDebugMode) {
-          print('=== AppsFlyer onInstallConversionData callback triggered ===');
-        }
-        
-        if (isHasConversion) {
-          if (kDebugMode) {
-            print('Callback already processed, skipping');
-          }
-          return;
-        }
+        if (isHasConversion) return;
         isHasConversion = true;
         _appsflyerSdk?.getAppsFlyerUID().then((value) async {
           if (value == null) return;
@@ -520,7 +418,8 @@ class SdkInitializer {
 
               if (kDebugMode) {
                 print(
-                    '|${entry.key} - ${entry.value} |${_convrtsion[entry.key]}');
+                  '|${entry.key} - ${entry.value} |${_convrtsion[entry.key]}',
+                );
               }
             }
           }
@@ -528,14 +427,16 @@ class SdkInitializer {
           // _convrtsion.addAll(conversionMap);
           // _convrtsion
           //     .addEntries(conversionMap as Iterable<MapEntry<String, dynamic>>);
-          _convrtsion.addEntries([MapEntry("af_id", value)]);
+          if (_convrtsion != null) {
+            _convrtsion.addEntries([MapEntry("af_id", value)]);
 
-          setValue('conversionData', _convrtsion);
-          var url = await makeConversion(_convrtsion);
-          if (kDebugMode) {
-            print("url -" + url);
+            setValue('conversionData', _convrtsion);
+            var url = await makeConversion(_convrtsion);
+            if (kDebugMode) {
+              print("url -" + url);
+            }
+            onEndRequest(url);
           }
-          onEndRequest(url);
         });
 
         // if (res is Map<dynamic, dynamic>) {
@@ -582,50 +483,50 @@ class SdkInitializer {
     // );
   }
 
-  /// DEPRECATED: This method is not used and contains direct requestPermission() call
-  /// DO NOT USE - use FirebaseMessagingService.requestPermission() and getToken() instead
-  // static Future<String?> requestAPNSToken() async {
-  //   try {
-  //     // Запрашиваем разрешение на пуш-уведомления (для iOS запрос обязателен)
-  //     await FirebaseMessaging.instance.requestPermission();
-  //
-  //     // Убеждаемся, что FCM token получен (это запустит регистрацию и выдачу APNS токена на iOS)
-  //     var token = await FirebaseMessaging.instance.getAPNSToken();
-  //     if (kDebugMode) {
-  //       print("first token");
-  //     }
-  //     if (kDebugMode) {
-  //       print(token);
-  //     }
-  //     if (kDebugMode) {
-  //       print(DefaultFirebaseOptions.currentPlatform.projectId);
-  //     }
-  //     String? apnsToken;
-  //     int retries = 10;
-  //     // Ждём пока APNS токен не станет доступен
-  //     for (int i = 0; i < retries; i++) {
-  //       apnsToken = await FirebaseMessaging.instance.getAPNSToken();
-  //       if (apnsToken != null && apnsToken.isNotEmpty) {
-  //         if (kDebugMode) {
-  //           print('APNS токен получен: $apnsToken');
-  //         }
-  //         return apnsToken;
-  //       }
-  //       await Future.delayed(const Duration(milliseconds: 500));
-  //     }
-  //     if (kDebugMode) {
-  //       print('APNS токен не получен (timeout)');
-  //     }
-  //     return null;
-  //   } catch (e) {
-  //     if (kDebugMode) {
-  //       print('Ошибка при получении APNS токена: $e');
-  //     }
-  //     return null;
-  //   }
-  // }
+  /// Запрашивает APNS токен через FirebaseMessaging
+  static Future<String?> requestAPNSToken() async {
+    try {
+      // Запрашиваем разрешение на пуш-уведомления (для iOS запрос обязателен)
+      await FirebaseMessaging.instance.requestPermission();
+
+      // Убеждаемся, что FCM token получен (это запустит регистрацию и выдачу APNS токена на iOS)
+      var token = await FirebaseMessaging.instance.getAPNSToken();
+      if (kDebugMode) {
+        print("first token");
+      }
+      if (kDebugMode) {
+        print(token);
+      }
+      if (kDebugMode) {
+        print(DefaultFirebaseOptions.currentPlatform.projectId);
+      }
+      String? apnsToken;
+      int retries = 10;
+      // Ждём пока APNS токен не станет доступен
+      for (int i = 0; i < retries; i++) {
+        apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+        if (apnsToken != null && apnsToken.isNotEmpty) {
+          if (kDebugMode) {
+            print('APNS токен получен: $apnsToken');
+          }
+          return apnsToken;
+        }
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+      if (kDebugMode) {
+        print('APNS токен не получен (timeout)');
+      }
+      return null;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Ошибка при получении APNS токена: $e');
+      }
+      return null;
+    }
+  }
 
   static bool isIOSSimulator() {
+    return false;
     if (!Platform.isIOS) return false;
 
     // Проверяем переменные окружения симулятора
@@ -635,47 +536,42 @@ class SdkInitializer {
   }
 
   static Future<void> pushRequest(BuildContext context) async {
-    // Firebase уже инициализирован в main.dart
+    await Firebase.initializeApp();
 
-    if (kDebugMode) {
-      print('=== pushRequest: User accepted push notifications ===');
-    }
-
-    // Request system permission for notifications (Firebase)
-    await FirebaseMessagingService.requestPermission();
-
-    // Request iOS local notification permissions
-    await LocalNotificationsService.instance().requestIOSPermissions();
-
-    // Now get the FCM token (after permission is granted)
-    var token = await FirebaseMessagingService.getToken();
-
-    if (kDebugMode) {
-      print('FCM token obtained: $token');
+    var token = await FirebaseMessagingService.InitPushAndGetToken();
+    if (token == null) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const WebViewScreen()),
+        (route) => false,
+      );
+      return;
     }
 
     PushRequestControl.acceptPushRequest(pushRequestData!);
 
     setValue("pushRequestData", pushRequestData?.toJson());
     _convrtsion = SdkInitializer.getValue('conversionData');
-    if (kDebugMode) {
-      print("makeConversion 2");
+    if (_convrtsion is Map<String, dynamic>) {
+      if (kDebugMode) {
+        print("makeConversion 2");
+      }
+      var url = await SdkInitializer.secondMakeConversion(
+        _convrtsion,
+        apnsToken: token,
+        isLoad: false,
+      );
+      setValue(url, "receivedUrl");
+      if (kDebugMode) {
+        print("pushRequest ");
+      }
+      _runtimeStorage['receivedUrl'] = url;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const WebViewScreen()),
+        (route) => false,
+      );
     }
-    var url = await SdkInitializer.secondMakeConversion(
-      _convrtsion,
-      apnsToken: token,
-      isLoad: false,
-    );
-    setValue(url, "receivedUrl");
-    if (kDebugMode) {
-      print("pushRequest ");
-    }
-    _runtimeStorage['receivedUrl'] = url;
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const WebViewScreen()),
-      (route) => false,
-    );
   }
 
   static Future<String> secondMakeConversion(
@@ -780,5 +676,30 @@ Future<Map<String, dynamic>?> sendPostRequest({
       print('Ошибка запроса: $e');
     }
     return null;
+  }
+}
+
+class EventBus {
+  // Контроллер для событий
+  final _controller = StreamController<dynamic>.broadcast();
+
+  // Singleton instance
+  static final EventBus instance = EventBus();
+
+  // Приватный конструктор (если хотите запретить создание экземпляров)
+  // EventBus._(); // или просто не объявляйте public конструктор
+
+  // Поток событий
+  Stream<dynamic> get events => _controller.stream;
+
+  // Отправка события
+  void fire(dynamic event) {
+    print(event);
+    _controller.add(event);
+  }
+
+  // Закрытие
+  void dispose() {
+    _controller.close();
   }
 }

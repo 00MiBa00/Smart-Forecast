@@ -65,22 +65,15 @@ class PushRequestControl {
       try {
         declinedAt = DateTime.parse(firstDeclinedAt);
       } catch (e) {
-        if (isDebug) print("Error parsing decline date: $e");
+        if (isDebug) print("catch");
         return true;
       }
       final now = DateTime.now();
-      final daysSinceDecline = now.difference(declinedAt).inDays;
 
-      if (isDebug) {
-        print("Days since decline: $daysSinceDecline (need 3 to show again)");
-      }
-
-      if (daysSinceDecline >= 3) {
-        if (isDebug) print("3 days passed, showing push request again");
+      if (now.difference(declinedAt).inDays >= 3) {
         return true;
       }
 
-      if (isDebug) print("Less than 3 days, not showing push request");
       return false;
     }
 

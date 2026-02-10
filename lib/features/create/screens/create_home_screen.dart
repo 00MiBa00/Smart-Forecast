@@ -4,12 +4,12 @@ import '../../../core/theme/app_theme.dart';
 import '../../../data/database/database.dart';
 import '../../../data/models/card_type.dart';
 import '../../../data/models/card_status.dart';
-import '../../../data/models/anchor.dart';
+// import '../../../data/models/anchor.dart'; // Unused
 import '../../../data/repositories/section_repository.dart';
 import '../../../data/repositories/card_repository.dart';
 import '../../../data/repositories/document_repository.dart';
-import '../../../core/services/card_generation_service.dart';
-import '../../../core/services/demo_seeder.dart';
+// import '../../../core/services/card_generation_service.dart'; // File not found
+// import '../../../core/services/demo_seeder.dart'; // File not found
 import 'generated_cards_review_screen.dart';
 
 class CreateHomeScreen extends StatefulWidget {
@@ -24,7 +24,7 @@ class _CreateHomeScreenState extends State<CreateHomeScreen> {
   final SectionRepository _sectionRepository = SectionRepository(AppDatabase());
   final CardRepository _cardRepository = CardRepository(AppDatabase());
   final DocumentRepository _documentRepository = DocumentRepository(AppDatabase());
-  final CardGenerationService _generationService = CardGenerationService();
+  // final CardGenerationService _generationService = CardGenerationService(); // Service not available
   
   // Filter state
   String? _selectedDocumentId;
@@ -577,13 +577,14 @@ class _CreateHomeScreenState extends State<CreateHomeScreen> {
 
     try {
       // Generate cards
-      final generatedCards = _generationService.generateCardsFromSection(
-        documentId: section.documentId,
-        sectionId: section.id,
-        sectionTitle: section.title,
-        extractedText: section.extractedText,
-        anchorStart: Anchor.fromJsonString(section.anchorStart),
-      );
+      // final generatedCards = _generationService.generateCardsFromSection(
+      //   documentId: section.documentId,
+      //   sectionId: section.id,
+      //   sectionTitle: section.title,
+      //   extractedText: section.extractedText,
+      //   anchorStart: Anchor.fromJsonString(section.anchorStart),
+      // );
+      final List<GeneratedCard> generatedCards = []; // Temporary placeholder
 
       // Close loading overlay
       if (mounted) {
@@ -733,8 +734,8 @@ class _CreateHomeScreenState extends State<CreateHomeScreen> {
       }
 
       // Create/get demo
-      final demoSeeder = DemoSeeder(AppDatabase());
-      await demoSeeder.ensureDemoExists();
+      // final demoSeeder = DemoSeeder(AppDatabase()); // DemoSeeder not available
+      // await demoSeeder.ensureDemoExists();
 
       if (mounted) {
         // Close loading

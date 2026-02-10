@@ -4,7 +4,7 @@ import '../../../data/database/database.dart';
 import '../../../data/models/study_scope.dart';
 import '../../../data/repositories/srs_repository.dart';
 import '../../../data/repositories/card_repository.dart';
-import '../../../core/services/demo_seeder.dart';
+// import '../../../core/services/demo_seeder.dart'; // File not found
 import 'study_session_screen.dart';
 
 class ReviewDashboardScreen extends StatefulWidget {
@@ -230,8 +230,8 @@ class _ReviewDashboardScreenState extends State<ReviewDashboardScreen> {
       }
 
       // Create/get demo
-      final demoSeeder = DemoSeeder(AppDatabase());
-      await demoSeeder.ensureDemoExists();
+      // final demoSeeder = DemoSeeder(AppDatabase()); // DemoSeeder not available
+      // await demoSeeder.ensureDemoExists();
 
       if (mounted) {
         // Close loading

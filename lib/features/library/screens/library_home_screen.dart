@@ -5,7 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../data/database/database.dart';
 import '../../../data/models/document_type.dart';
 import '../../../data/repositories/document_repository.dart';
-import '../../../core/services/demo_seeder.dart';
+// import '../../../core/services/demo_seeder.dart'; // File not found
 import '../../reader/screens/reader_screen.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:uuid/uuid.dart';
@@ -488,9 +488,9 @@ class _LibraryHomeScreenState extends State<LibraryHomeScreen> {
       );
 
       // Create/get demo
-      final demoSeeder = DemoSeeder(AppDatabase());
-      await demoSeeder.ensureDemoExists();
-      final doc = await demoSeeder.getDemoDocument();
+      // final demoSeeder = DemoSeeder(AppDatabase()); // DemoSeeder not available
+      // await demoSeeder.ensureDemoExists();
+      // final doc = await demoSeeder.getDemoDocument();
 
       if (!mounted) return;
       
@@ -498,6 +498,8 @@ class _LibraryHomeScreenState extends State<LibraryHomeScreen> {
       Navigator.of(context).pop();
 
       // Open demo document
+      // TODO: Restore when DemoSeeder is available
+      /*
       if (doc != null) {
         await _documentRepository.updateLastOpened(doc.id);
         
@@ -511,6 +513,7 @@ class _LibraryHomeScreenState extends State<LibraryHomeScreen> {
           ),
         );
       }
+      */
     } catch (e) {
       if (!mounted) return;
       

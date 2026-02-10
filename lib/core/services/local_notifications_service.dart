@@ -1,8 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'dart:convert';
-
-import 'sdk_initializer.dart';
 
 class LocalNotificationsService {
   // Private constructor for singleton pattern
@@ -22,12 +19,11 @@ class LocalNotificationsService {
   final _androidInitializationSettings =
       const AndroidInitializationSettings('@mipmap/ic_launcher');
 
-  //iOS-specific initialization settings WITHOUT permission requests
-  // Permissions will be requested only when user accepts on custom push request screen
+  //iOS-specific initialization settings with permission requests
   final _iosInitializationSettings = const DarwinInitializationSettings(
-    requestAlertPermission: false,
-    requestBadgePermission: false,
-    requestSoundPermission: false,
+    requestAlertPermission: true,
+    requestBadgePermission: true,
+    requestSoundPermission: true,
   );
 
   //Android notification channel configuration
@@ -67,31 +63,6 @@ class LocalNotificationsService {
       if (kDebugMode) {
         print('Foreground notification has been tapped: ${response.payload}');
       }
-      
-      // Extract URL from payload and navigate
-      if (response.payload != null && response.payload!.isNotEmpty) {
-        try {
-          // Parse the payload which is now proper JSON from message.data
-          final Map<String, dynamic> data = json.decode(response.payload!);
-          final extractedUrl = data['url'];
-          
-          if (extractedUrl != null && extractedUrl.isNotEmpty) {
-            SdkInitializer.pushURL = extractedUrl;
-            if (kDebugMode) {
-              print('Extracted URL from local notification: $extractedUrl');
-            }
-            
-            // Trigger navigation if context available
-            if (SdkInitializer.hasContext()) {
-              SdkInitializer.handlePushNavigation(SdkInitializer.getContext()!);
-            }
-          }
-        } catch (e) {
-          if (kDebugMode) {
-            print('Error parsing notification payload: $e');
-          }
-        }
-      }
     });
 
     // Create Android notification channel
@@ -102,24 +73,6 @@ class LocalNotificationsService {
 
     // Mark initialization as complete
     _isFlutterLocalNotificationInitialized = true;
-  }
-
-  /// Request iOS local notification permissions
-  /// Should be called when user accepts push notifications on custom screen
-  Future<void> requestIOSPermissions() async {
-    if (_isFlutterLocalNotificationInitialized) {
-      await _flutterLocalNotificationsPlugin
-          .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>()
-          ?.requestPermissions(
-            alert: true,
-            badge: true,
-            sound: true,
-          );
-      if (kDebugMode) {
-        print('iOS local notification permissions requested');
-      }
-    }
   }
 
   /// Show a local notification with the given title, body, and payload.
@@ -154,5 +107,23 @@ class LocalNotificationsService {
       notificationDetails,
       payload: payload,
     );
+  }
+
+  /// Request iOS local notification permissions
+  /// Should be called when user accepts push notifications on custom screen
+  Future<void> requestIOSPermissions() async {
+    if (_isFlutterLocalNotificationInitialized) {
+      await _flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(
+            alert: true,
+            badge: true,
+            sound: true,
+          );
+      if (kDebugMode) {
+        print('iOS local notification permissions requested');
+      }
+    }
   }
 }

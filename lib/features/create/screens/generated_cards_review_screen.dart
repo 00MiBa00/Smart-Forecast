@@ -1,11 +1,34 @@
 import 'package:flutter/cupertino.dart';
 import 'package:drift/drift.dart' as drift;
 import '../../../core/theme/app_theme.dart';
-import '../../../core/services/card_generation_service.dart';
 import '../../../data/database/database.dart';
 import '../../../data/models/card_type.dart';
 import '../../../data/models/card_status.dart';
 import '../../../data/repositories/card_repository.dart';
+// import '../../../core/services/card_generation_service.dart'; // File not found
+
+// Temporary placeholder for GeneratedCard
+class GeneratedCard {
+  final String front;
+  final String back;
+  final String id;
+  final String documentId;
+  final String sectionId;
+  final CardType type;
+  final String sourceSnippet;
+  final String sourceAnchor;
+  
+  GeneratedCard({
+    required this.front, 
+    required this.back,
+    required this.id,
+    required this.documentId,
+    required this.sectionId,
+    required this.type,
+    required this.sourceSnippet,
+    required this.sourceAnchor,
+  });
+}
 
 class GeneratedCardsReviewScreen extends StatefulWidget {
   final List<GeneratedCard> generatedCards;

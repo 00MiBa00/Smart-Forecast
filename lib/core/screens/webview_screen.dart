@@ -40,6 +40,8 @@ class UrlLauncherService {
   }
 }
 
+// Removed unused _showErrorSnackbar function
+
 Future<void> _launchURL(String url) async {
   // NativeMethodCaller.callSwiftMethodWithParams({'url': url});
   // await LaunchApp.openApp(
