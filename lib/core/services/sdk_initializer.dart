@@ -156,9 +156,10 @@ class SdkInitializer {
         print('✅ Navigating to WebView with pushURL parameter: $urlToOpen');
       }
       // Navigate to WebView and pass pushURL as parameter (not via global variable)
+      // Use UniqueKey() to force Flutter to create a NEW instance instead of reusing existing one
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (context) => WebViewScreen(pushUrl: urlToOpen)),
+        MaterialPageRoute(builder: (context) => WebViewScreen(key: UniqueKey(), pushUrl: urlToOpen)),
         (route) => false,
       );
     } else {

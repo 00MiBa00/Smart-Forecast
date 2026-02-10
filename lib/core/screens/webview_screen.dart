@@ -78,7 +78,7 @@ class NativeMethodCaller {
   }
 }
 
-class _WebViewScreenState extends State<WebViewScreen> {
+class _WebViewScreenState extends State<WebViewScreen> with WidgetsBindingObserver {
   late final PlatformWebViewController controller;
   bool isLoading = true;
   String currentUrl = '';
@@ -88,6 +88,9 @@ class _WebViewScreenState extends State<WebViewScreen> {
   @override
   void initState() {
     super.initState();
+    
+    // Register lifecycle observer to detect app resume from background
+    WidgetsBinding.instance.addObserver(this);
 
     if (kDebugMode) {
       print('=== WEBVIEW INITSTATE START ===');
@@ -276,6 +279,38 @@ class _WebViewScreenState extends State<WebViewScreen> {
     //   (controller as WebKitWebViewController)
     //       .setAllowsBackForwardNavigationGestures(true);
     // }
+  }
+
+  @override
+  void dispose() {
+    // Remove lifecycle observer
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (kDebugMode) {
+      print('=== WebView AppLifecycleState changed to: $state ===');
+    }
+    
+    // When app resumes from background, check if there's a new pushURL
+    if (state == AppLifecycleState.resumed) {
+      if (SdkInitializer.pushURL != null && SdkInitializer.pushURL!.isNotEmpty) {
+        if (kDebugMode) {
+          print('🔄 App resumed with pushURL: ${SdkInitializer.pushURL}');
+          print('Loading new URL from push notification...');
+        }
+        
+        // Load the new URL from push notification
+        final newUrl = SdkInitializer.pushURL!;
+        SdkInitializer.pushURL = null; // Clear after using
+        
+        controller.loadRequest(
+          LoadRequestParams(uri: Uri.parse(newUrl)),
+        );
+      }
+    }
   }
 
   @override
