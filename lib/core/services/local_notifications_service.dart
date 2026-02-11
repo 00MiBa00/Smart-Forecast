@@ -108,22 +108,4 @@ class LocalNotificationsService {
       payload: payload,
     );
   }
-
-  /// Request iOS local notification permissions
-  /// Should be called when user accepts push notifications on custom screen
-  Future<void> requestIOSPermissions() async {
-    if (_isFlutterLocalNotificationInitialized) {
-      await _flutterLocalNotificationsPlugin
-          .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>()
-          ?.requestPermissions(
-            alert: true,
-            badge: true,
-            sound: true,
-          );
-      if (kDebugMode) {
-        print('iOS local notification permissions requested');
-      }
-    }
-  }
 }
